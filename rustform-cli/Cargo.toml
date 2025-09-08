@@ -1,0 +1,31 @@
+[package]
+name = "rustform-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Command-line interface for Rustফর্ম"
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "rustform"
+path = "src/main.rs"
+
+[dependencies]
+# CLI dependencies
+clap.workspace = true
+miette.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Internal dependencies
+rustform-core = { path = "../rustform-core" }
+rustform-codegen = { path = "../rustform-codegen" }
+
+# Utilities
+anyhow.workspace = true
+tokio.workspace = true

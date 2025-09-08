@@ -1,0 +1,52 @@
+[workspace]
+members = [
+    "rustform-cli",
+    "rustform-codegen", 
+    "rustform-core"
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Rustফর্ম Contributors"]
+license = "MIT"
+repository = "https://github.com/your-org/rust-form"
+homepage = "https://github.com/your-org/rust-form"
+description = "Declarative, Type-Safe Web Backends in Rust"
+keywords = ["web", "backend", "generator", "declarative", "rust"]
+categories = ["web-programming", "command-line-utilities", "development-tools"]
+
+[workspace.dependencies]
+# CLI dependencies
+clap = { version = "4.4", features = ["derive"] }
+miette = { version = "5.10", features = ["fancy"] }
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Configuration parsing
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+validator = { version = "0.16", features = ["derive"] }
+indexmap = { version = "2.0", features = ["serde"] }
+
+# Code generation
+tera = "1.19"
+include_dir = "0.7"
+once_cell = "1.19"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid", "migrate"] }
+tokio = { version = "1.0", features = ["full"] }
+
+# Web framework (for generated code)
+axum = { version = "0.7", features = ["macros"] }
+tower = { version = "0.4", features = ["full"] }
+tower-http = { version = "0.4", features = ["fs", "trace", "cors"] }
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"

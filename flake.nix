@@ -1,13 +1,13 @@
 {
-  "description": "A development environment for the Rustফর্ম project",
+  description = "A development environment for the Rustফর্ম project";
 
-  "inputs": {
-    "nixpkgs.url": "github:NixOS/nixpkgs/nixos-unstable",
-    "flake-utils.url": "github:numtide/flake-utils",
-    "rust-overlay.url": "github:oxalica/rust-overlay"
-  },
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+  };
 
-  "outputs": { self, nixpkgs, flake-utils, rust-overlay }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];

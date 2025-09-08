@@ -1,0 +1,38 @@
+[package]
+name = "rustform-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Core types and utilities for Rustফর্ম"
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+# Configuration parsing
+serde.workspace = true
+serde_yaml.workspace = true
+serde_json.workspace = true
+validator.workspace = true
+indexmap.workspace = true
+
+# Database
+sqlx.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+
+# Web framework (re-exports for generated code)
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+tokio.workspace = true
+
+# Error handling
+thiserror.workspace = true
+miette.workspace = true
+anyhow.workspace = true
+
+# Utilities
+tracing.workspace = true

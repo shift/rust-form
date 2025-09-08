@@ -1,0 +1,30 @@
+[package]
+name = "rustform-codegen"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Code generation engine for Rustফর্ম"
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+# Template engine
+tera.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+include_dir.workspace = true
+once_cell.workspace = true
+
+# Internal dependencies
+rustform-core = { path = "../rustform-core" }
+
+# Error handling
+thiserror.workspace = true
+miette.workspace = true
+anyhow.workspace = true
+
+# Utilities
+tracing.workspace = true
