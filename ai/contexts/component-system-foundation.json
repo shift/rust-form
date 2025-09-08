@@ -1,0 +1,142 @@
+{
+  "context_id": "component-system-foundation",
+  "title": "Component System Foundation Implementation",
+  "description": "Core infrastructure for the Rust-form component system including schema definition, registry, and Nix integration",
+  "phase": "1",
+  "priority": "critical",
+  "estimated_duration": "2 weeks",
+  "dependencies": [],
+  "key_files": [
+    "rustform-core/src/component/schema.rs",
+    "rustform-core/src/component/registry.rs", 
+    "rustform-core/src/component/manifest.rs",
+    "rustform-codegen/src/nix/flake_generator.rs",
+    "rustform-codegen/src/nix/project_flake.rs"
+  ],
+  "objectives": [
+    {
+      "id": "schema_definition",
+      "title": "Component Schema Definition",
+      "description": "Define comprehensive schema for component configuration including metadata, dependencies, templates, tests, and documentation",
+      "acceptance_criteria": [
+        "Component metadata schema (name, description, version, category)",
+        "Dependency management schema (Rust crates, Nix packages)",
+        "Template configuration schema",
+        "Test generation configuration",
+        "Documentation generation configuration",
+        "Validation with helpful error messages"
+      ],
+      "files": ["rustform-core/src/component/schema.rs"],
+      "estimated_time": "2 days"
+    },
+    {
+      "id": "component_registry",
+      "title": "Component Registry System",
+      "description": "Implement component discovery, registration, and dependency resolution",
+      "acceptance_criteria": [
+        "Auto-discovery of components in components/ directory",
+        "Component validation and loading",
+        "Dependency resolution between components",
+        "Component metadata indexing",
+        "Error handling for invalid components"
+      ],
+      "files": ["rustform-core/src/component/registry.rs"],
+      "estimated_time": "3 days",
+      "dependencies": ["schema_definition"]
+    },
+    {
+      "id": "manifest_parser",
+      "title": "Component Manifest Parser",
+      "description": "Parse and validate component.yml files with advanced features",
+      "acceptance_criteria": [
+        "YAML parsing with validation",
+        "Schema validation with helpful error messages",
+        "Configuration merging and inheritance",
+        "Environment variable substitution",
+        "Conditional configuration support"
+      ],
+      "files": ["rustform-core/src/component/manifest.rs"],
+      "estimated_time": "2 days",
+      "dependencies": ["schema_definition"]
+    },
+    {
+      "id": "flake_generator",
+      "title": "Flake Template Engine",
+      "description": "Generate component-specific flake.nix files with dependency injection",
+      "acceptance_criteria": [
+        "Template-based flake.nix generation",
+        "Component dependency injection",
+        "DevShell package management",
+        "Build input configuration",
+        "Environment variable handling"
+      ],
+      "files": ["rustform-codegen/src/nix/flake_generator.rs"],
+      "estimated_time": "4 days",
+      "dependencies": ["schema_definition"]
+    },
+    {
+      "id": "project_flake_aggregation",
+      "title": "Project Flake Aggregation",
+      "description": "Aggregate component flakes into unified project flake",
+      "acceptance_criteria": [
+        "Auto-discovery of component flakes",
+        "Dependency merging and deduplication",
+        "Conflict resolution for package versions",
+        "Environment variable management",
+        "Performance optimization for large projects"
+      ],
+      "files": ["rustform-codegen/src/nix/project_flake.rs"],
+      "estimated_time": "3 days",
+      "dependencies": ["flake_generator"]
+    }
+  ],
+  "technical_requirements": [
+    "Rust 1.70+",
+    "Nix flakes support",
+    "YAML parsing library (serde_yaml)",
+    "Template engine (tera)",
+    "File system operations",
+    "Error handling with context"
+  ],
+  "success_metrics": [
+    "Component discovery works for 100+ components",
+    "Flake generation completes in <1 second per component",
+    "Dependency resolution handles circular dependencies",
+    "Configuration validation provides actionable error messages",
+    "Memory usage scales linearly with component count"
+  ],
+  "risk_factors": [
+    {
+      "risk": "Complex dependency resolution",
+      "mitigation": "Implement topological sort with cycle detection",
+      "probability": "medium",
+      "impact": "high"
+    },
+    {
+      "risk": "Nix flake compatibility issues",
+      "mitigation": "Test with multiple Nix versions and document requirements",
+      "probability": "low",
+      "impact": "high"
+    },
+    {
+      "risk": "Performance issues with large component libraries",
+      "mitigation": "Implement caching and lazy loading",
+      "probability": "medium",
+      "impact": "medium"
+    }
+  ],
+  "testing_strategy": [
+    "Unit tests for each module with 90%+ coverage",
+    "Integration tests for component discovery",
+    "Performance tests for large component libraries",
+    "Property-based testing for configuration validation",
+    "End-to-end tests for flake generation"
+  ],
+  "documentation_requirements": [
+    "API documentation for all public interfaces",
+    "Architecture decision records (ADRs)",
+    "Integration examples",
+    "Performance characteristics",
+    "Troubleshooting guide"
+  ]
+}

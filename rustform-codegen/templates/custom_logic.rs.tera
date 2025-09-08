@@ -1,0 +1,219 @@
+// Custom Logic Framework
+// This file provides standardized interfaces for custom logic integration
+
+use std::error::Error;
+use std::fmt;
+use serde_json::Value;
+
+// Custom error type for hooks and extensions
+#[derive(Debug)]
+pub struct CustomLogicError {
+    pub message: String,
+    pub source: Option<Box<dyn Error + Send + Sync>>,
+}
+
+impl fmt::Display for CustomLogicError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Custom logic error: {}", self.message)
+    }
+}
+
+impl Error for CustomLogicError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        self.source.as_ref().map(|e| e.as_ref() as &(dyn Error + 'static))
+    }
+}
+
+// Hook system for model lifecycle events
+pub trait ModelHooks<T> {
+    async fn before_create(&self, data: &mut T) -> Result<(), CustomLogicError> {
+        Ok(())
+    }
+    
+    async fn after_create(&self, entity: &T) -> Result<(), CustomLogicError> {
+        Ok(())
+    }
+    
+    async fn before_update(&self, id: &str, data: &mut T) -> Result<(), CustomLogicError> {
+        Ok(())
+    }
+    
+    async fn after_update(&self, entity: &T) -> Result<(), CustomLogicError> {
+        Ok(())
+    }
+    
+    async fn before_delete(&self, id: &str) -> Result<(), CustomLogicError> {
+        Ok(())
+    }
+    
+    async fn after_delete(&self, id: &str) -> Result<(), CustomLogicError> {
+        Ok(())
+    }
+    
+    async fn before_query(&self, query: &mut String, params: &mut Vec<Value>) -> Result<(), CustomLogicError> {
+        Ok(())
+    }
+    
+    async fn after_query(&self, results: &mut Vec<T>) -> Result<(), CustomLogicError> {
+        Ok(())
+    }
+}
+
+// Validation framework
+pub trait CustomValidator<T> {
+    fn validate(&self, data: &T) -> Result<(), Vec<ValidationError>>;
+}
+
+#[derive(Debug, Clone)]
+pub struct ValidationError {
+    pub field: String,
+    pub message: String,
+    pub code: String,
+}
+
+impl fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Validation error for '{}': {}", self.field, self.message)
+    }
+}
+
+impl Error for ValidationError {}
+
+// Extension point for custom business logic
+pub trait ModelExtensions {
+    type Model;
+    type Error: Error + Send + Sync + 'static;
+    
+    fn extend_model(&self, model: &mut Self::Model) -> Result<(), Self::Error>;
+}
+
+// Handler middleware for custom endpoint logic
+pub trait HandlerMiddleware<Request, Response> {
+    type Error: Error + Send + Sync + 'static;
+    
+    async fn before_handler(&self, request: &mut Request) -> Result<(), Self::Error>;
+    async fn after_handler(&self, response: &mut Response) -> Result<(), Self::Error>;
+    async fn on_error(&self, error: &dyn Error) -> Result<Response, Self::Error>;
+}
+
+// Context for passing data between custom logic components
+#[derive(Debug, Clone)]
+pub struct LogicContext {
+    pub user_id: Option<String>,
+    pub session_id: Option<String>,
+    pub request_id: String,
+    pub metadata: std::collections::HashMap<String, Value>,
+}
+
+impl LogicContext {
+    pub fn new(request_id: String) -> Self {
+        Self {
+            user_id: None,
+            session_id: None,
+            request_id,
+            metadata: std::collections::HashMap::new(),
+        }
+    }
+    
+    pub fn with_user(mut self, user_id: String) -> Self {
+        self.user_id = Some(user_id);
+        self
+    }
+    
+    pub fn with_session(mut self, session_id: String) -> Self {
+        self.session_id = Some(session_id);
+        self
+    }
+    
+    pub fn set_metadata(&mut self, key: String, value: Value) {
+        self.metadata.insert(key, value);
+    }
+    
+    pub fn get_metadata(&self, key: &str) -> Option<&Value> {
+        self.metadata.get(key)
+    }
+}
+
+// Macro for generating custom logic implementations
+#[macro_export]
+macro_rules! impl_custom_logic {
+    ($model:ty, $hooks:ty) => {
+        impl ModelHooks<$model> for $hooks {
+            // Default implementations are provided by the trait
+        }
+    };
+    
+    ($model:ty, $hooks:ty, { $($method:ident => $impl:expr),* }) => {
+        impl ModelHooks<$model> for $hooks {
+            $(
+                async fn $method(&self, data: &mut $model) -> Result<(), CustomLogicError> {
+                    $impl
+                }
+            )*
+        }
+    };
+}
+
+// Built-in validators
+pub struct EmailValidator;
+
+impl<T> CustomValidator<T> for EmailValidator 
+where 
+    T: AsRef<str>
+{
+    fn validate(&self, data: &T) -> Result<(), Vec<ValidationError>> {
+        let email = data.as_ref();
+        if !email.contains('@') {
+            return Err(vec![ValidationError {
+                field: "email".to_string(),
+                message: "Invalid email format".to_string(),
+                code: "INVALID_EMAIL".to_string(),
+            }]);
+        }
+        Ok(())
+    }
+}
+
+pub struct LengthValidator {
+    pub min: Option<usize>,
+    pub max: Option<usize>,
+    pub field_name: String,
+}
+
+impl<T> CustomValidator<T> for LengthValidator 
+where 
+    T: AsRef<str>
+{
+    fn validate(&self, data: &T) -> Result<(), Vec<ValidationError>> {
+        let value = data.as_ref();
+        let len = value.len();
+        
+        let mut errors = Vec::new();
+        
+        if let Some(min) = self.min {
+            if len < min {
+                errors.push(ValidationError {
+                    field: self.field_name.clone(),
+                    message: format!("Must be at least {} characters", min),
+                    code: "TOO_SHORT".to_string(),
+                });
+            }
+        }
+        
+        if let Some(max) = self.max {
+            if len > max {
+                errors.push(ValidationError {
+                    field: self.field_name.clone(),
+                    message: format!("Must be at most {} characters", max),
+                    code: "TOO_LONG".to_string(),
+                });
+            }
+        }
+        
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}

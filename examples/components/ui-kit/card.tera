@@ -1,0 +1,62 @@
+{# Card component template #}
+<div class="card {{ class | default(value="") }}">
+  {% if header %}
+    <div class="card-header">
+      {% if title %}
+        <h3 class="card-title">{{ title }}</h3>
+      {% endif %}
+      {% if header_actions %}
+        <div class="card-actions">{{ header_actions }}</div>
+      {% endif %}
+    </div>
+  {% endif %}
+  
+  <div class="card-body">
+    {{ content }}
+  </div>
+  
+  {% if footer %}
+    <div class="card-footer">
+      {{ footer }}
+    </div>
+  {% endif %}
+</div>
+
+<style>
+.card {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.card-body {
+  padding: 1rem;
+}
+
+.card-footer {
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+</style>

@@ -1,0 +1,12 @@
+/home/shift/code/rust-form/rustform-studio/generated/target/debug/deps/semver-0d05066bf4783ef1.d: /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/lib.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/backport.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/display.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/error.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/eval.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/identifier.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/impls.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/parse.rs
+
+/home/shift/code/rust-form/rustform-studio/generated/target/debug/deps/libsemver-0d05066bf4783ef1.rmeta: /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/lib.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/backport.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/display.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/error.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/eval.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/identifier.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/impls.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/parse.rs
+
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/lib.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/backport.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/display.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/error.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/eval.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/identifier.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/impls.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/semver-1.0.26/src/parse.rs:

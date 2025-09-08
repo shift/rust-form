@@ -13,6 +13,8 @@ pub struct Config {
     pub server: ServerConfig,
     #[serde(default)]
     pub frontend: Option<FrontendConfig>,
+    #[serde(default)]
+    pub components: Option<IndexMap<String, String>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -75,6 +77,8 @@ pub struct ModelConfig {
     pub relationships: IndexMap<String, RelationshipConfig>,
     #[serde(default)]
     pub indexes: Vec<IndexConfig>,
+    #[serde(default)]
+    pub custom_logic: Option<CustomLogicConfig>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -215,6 +219,8 @@ pub struct EndpointConfig {
     pub pagination: Option<PaginationConfig>,
     #[serde(default)]
     pub filters: Vec<FilterConfig>,
+    #[serde(default)]
+    pub custom_handlers: Option<CustomHandlersConfig>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -444,4 +450,60 @@ pub struct ExportConfig {
     pub package_name: String,
     pub version: String,
     pub components: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct CustomLogicConfig {
+    pub file: String,
+    #[serde(default)]
+    pub dependencies: Vec<String>,
+    #[serde(default)]
+    pub methods: Vec<String>,
+    #[serde(default)]
+    pub traits: Vec<String>,
+    #[serde(default)]
+    pub hooks: Option<CustomHooksConfig>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct CustomHooksConfig {
+    #[serde(default)]
+    pub before_create: Option<String>,
+    #[serde(default)]
+    pub after_create: Option<String>,
+    #[serde(default)]
+    pub before_update: Option<String>,
+    #[serde(default)]
+    pub after_update: Option<String>,
+    #[serde(default)]
+    pub before_delete: Option<String>,
+    #[serde(default)]
+    pub after_delete: Option<String>,
+    #[serde(default)]
+    pub before_query: Option<String>,
+    #[serde(default)]
+    pub after_query: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct CustomHandlersConfig {
+    pub file: String,
+    #[serde(default)]
+    pub dependencies: Vec<String>,
+    #[serde(default)]
+    pub handlers: Vec<String>,
+    #[serde(default)]
+    pub middleware: Vec<String>,
+    #[serde(default)]
+    pub validation: Option<CustomValidationConfig>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct CustomValidationConfig {
+    #[serde(default)]
+    pub before_create: Option<String>,
+    #[serde(default)]
+    pub before_update: Option<String>,
+    #[serde(default)]
+    pub custom_validators: Vec<String>,
 }

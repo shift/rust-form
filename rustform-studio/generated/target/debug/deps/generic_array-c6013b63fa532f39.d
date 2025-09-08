@@ -1,0 +1,11 @@
+/home/shift/code/rust-form/rustform-studio/generated/target/debug/deps/generic_array-c6013b63fa532f39.d: /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/lib.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/hex.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/impls.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/arr.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/functional.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/iter.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/sequence.rs
+
+/home/shift/code/rust-form/rustform-studio/generated/target/debug/deps/libgeneric_array-c6013b63fa532f39.rmeta: /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/lib.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/hex.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/impls.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/arr.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/functional.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/iter.rs /home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/sequence.rs
+
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/lib.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/hex.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/impls.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/arr.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/functional.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/iter.rs:
+/home/shift/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/generic-array-0.14.7/src/sequence.rs:

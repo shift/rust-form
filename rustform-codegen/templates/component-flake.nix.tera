@@ -1,0 +1,430 @@
+# Component Flake Template
+{
+  description = "{{ component.name | title }} Component - {{ component.description }}";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    flake-utils.url = "github:numtide/flake-utils";
+    {% if component.dependencies.flake_inputs -%}
+    # Component-specific flake inputs
+    {% for input in component.dependencies.flake_inputs -%}
+    {{ input.name }}.url = "{{ input.url }}";
+    {% endfor -%}
+    {% endif -%}
+  };
+
+  outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }@inputs:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
+        
+        # Component-specific build inputs from component.yml
+        buildInputs = with pkgs; [
+          {% for pkg in component.dependencies.nix.buildInputs -%}
+          {{ pkg }}
+          {% endfor -%}
+        ];
+        
+        # Native build inputs (compilers, tools)
+        nativeBuildInputs = with pkgs; [
+          {% for pkg in component.dependencies.nix.nativeBuildInputs -%}
+          {{ pkg }}
+          {% endfor -%}
+          # Default Rust toolchain
+          rust-bin.stable.latest.default
+        ];
+        
+        # Development shell packages
+        devShellPackages = with pkgs; [
+          {% for pkg in component.dependencies.nix.devShell.packages -%}
+          {{ pkg }}
+          {% endfor -%}
+          # Default development tools
+          rust-analyzer
+          cargo-watch
+          cargo-edit
+        ];
+
+        # Rust dependencies for Cargo.toml generation
+        rustDependencies = [
+          {% for dep in component.dependencies.rust -%}
+          "{{ dep }}"
+          {% endfor -%}
+        ];
+
+        # Test dependencies
+        testDependencies = [
+          {% for dep in component.dependencies.test_deps -%}
+          "{{ dep }}"
+          {% endfor -%}
+        ];
+
+        # Component metadata
+        componentMeta = {
+          name = "{{ component.name }}";
+          version = "{{ component.version }}";
+          category = "{{ component.category }}";
+          priority = "{{ component.priority }}";
+          complexity = "{{ component.complexity }}";
+          description = "{{ component.description }}";
+        };
+
+        # Build the component as a Rust package
+        componentPackage = pkgs.rustPlatform.buildRustPackage {
+          pname = "{{ component.name }}";
+          version = "{{ component.version }}";
+          src = ./.;
+          
+          # Generate Cargo.lock if it doesn't exist
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            allowBuiltinFetchGit = true;
+          };
+          
+          inherit buildInputs nativeBuildInputs;
+          
+          # Component-specific build configuration
+          {% if component.build_config -%}
+          buildFeatures = [ 
+            {% for feature in component.build_config.features -%}
+            "{{ feature }}"
+            {% endfor -%}
+          ];
+          {% endif -%}
+          
+          # Test configuration
+          doCheck = true;
+          checkFlags = [
+            "--test-threads=1"  # Serialize tests for components that need it
+          ];
+          
+          meta = with pkgs.lib; {
+            description = "{{ component.description }}";
+            homepage = "https://github.com/rust-form/components";
+            license = licenses.mit;
+            maintainers = [ "Rust-form Team" ];
+          };
+        };
+
+        # Documentation generation
+        componentDocs = pkgs.stdenv.mkDerivation {
+          name = "{{ component.name }}-docs";
+          src = ./.;
+          
+          buildInputs = with pkgs; [
+            mdbook
+            rust-bin.stable.latest.default
+          ];
+          
+          buildPhase = ''
+            # Generate Rust docs
+            cargo doc --no-deps --document-private-items
+            
+            # Generate component documentation
+            if [ -f "docs/book.toml" ]; then
+              cd docs && mdbook build
+            fi
+          '';
+          
+          installPhase = ''
+            mkdir -p $out
+            cp -r target/doc $out/rust-docs
+            if [ -d "docs/book" ]; then
+              cp -r docs/book $out/guide
+            fi
+          '';
+        };
+
+        # Test suite
+        componentTests = pkgs.stdenv.mkDerivation {
+          name = "{{ component.name }}-tests";
+          src = ./.;
+          
+          inherit buildInputs nativeBuildInputs;
+          
+          buildPhase = ''
+            # Run unit tests
+            cargo test --lib
+            
+            # Run integration tests
+            cargo test --test '*'
+            
+            # Run benchmarks
+            cargo bench --no-run
+            
+            # Generate coverage report
+            if command -v cargo-tarpaulin &> /dev/null; then
+              cargo tarpaulin --out xml --output-dir coverage
+            fi
+          '';
+          
+          installPhase = ''
+            mkdir -p $out
+            echo "All tests passed for {{ component.name }}" > $out/test-results.txt
+            if [ -d "coverage" ]; then
+              cp -r coverage $out/
+            fi
+          '';
+        };
+
+      in
+      {
+        # Default package
+        packages.default = componentPackage;
+        packages.docs = componentDocs;
+        packages.tests = componentTests;
+
+        # Development shell
+        devShells.default = pkgs.mkShell {
+          inherit buildInputs nativeBuildInputs;
+          packages = devShellPackages;
+          
+          # Environment variables
+          {% if component.environment -%}
+          {% for var, value in component.environment -%}
+          {{ var }} = "{{ value }}";
+          {% endfor -%}
+          {% endif -%}
+          
+          shellHook = ''
+            echo "🦀 {{ component.name | title }} Component Development Environment"
+            echo "📦 Category: {{ component.category }}"
+            echo "🔧 Priority: {{ component.priority }}"
+            echo "📊 Complexity: {{ component.complexity }}"
+            echo ""
+            echo "📋 Available commands:"
+            echo "  cargo build         - Build the component"
+            echo "  cargo test          - Run all tests"
+            echo "  cargo test --lib    - Run unit tests only"
+            echo "  cargo bench         - Run benchmarks"
+            echo "  cargo watch -x test - Watch and test on changes"
+            echo "  cargo doc --open    - Generate and open documentation"
+            echo ""
+            echo "🔍 Development tools:"
+            echo "  rust-analyzer       - LSP server"
+            echo "  cargo-watch         - File watcher"
+            echo "  cargo-edit          - Dependency management"
+            {% for tool in component.dependencies.nix.devShell.packages -%}
+            echo "  {{ tool }}               - {{ tool | replace("-", " ") | title }}"
+            {% endfor -%}
+            echo ""
+            
+            # Component-specific setup
+            {% if component.setup_commands -%}
+            echo "🛠️  Running component setup..."
+            {% for cmd in component.setup_commands -%}
+            {{ cmd }}
+            {% endfor -%}
+            {% endif -%}
+            
+            # Check if Cargo.toml exists, if not generate it
+            if [ ! -f "Cargo.toml" ]; then
+              echo "📝 Generating Cargo.toml..."
+              cat > Cargo.toml << 'EOF'
+[package]
+name = "{{ component.name }}"
+version = "{{ component.version }}"
+edition = "2021"
+description = "{{ component.description }}"
+authors = ["Rust-form Team"]
+license = "MIT"
+repository = "https://github.com/rust-form/components"
+
+[dependencies]
+{% for dep in component.dependencies.rust -%}
+{{ dep }}
+{% endfor -%}
+
+[dev-dependencies]
+{% for dep in component.dependencies.test_deps -%}
+{{ dep }}
+{% endfor -%}
+tokio-test = "0.4"
+criterion = "0.5"
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+{% if component.features -%}
+[features]
+default = [{% for feature in component.features.default %}"{{ feature }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+{% for feature, deps in component.features.optional -%}
+{{ feature }} = [{% for dep in deps %}"{{ dep }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+{% endfor -%}
+{% endif -%}
+EOF
+            fi
+            
+            # Create basic src structure if it doesn't exist
+            if [ ! -f "src/lib.rs" ]; then
+              echo "📁 Creating basic source structure..."
+              mkdir -p src
+              cat > src/lib.rs << 'EOF'
+//! {{ component.description }}
+//! 
+//! This component provides {{ component.description | lower }}.
+//! 
+//! # Examples
+//! 
+//! ```rust
+//! use {{ component.name | replace("-", "_") }}::*;
+//! 
+//! // Example usage here
+//! ```
+
+#![warn(missing_docs)]
+#![warn(clippy::all)]
+
+/// Main component configuration
+#[derive(Debug, Clone)]
+pub struct {{ component.name | replace("-", "") | title }}Config {
+    // Configuration fields from component.yml
+    {% for field, config in component.config_schema -%}
+    /// {{ config.description }}
+    pub {{ field }}: {{ config.type | rust_type }},
+    {% endfor -%}
+}
+
+impl Default for {{ component.name | replace("-", "") | title }}Config {
+    fn default() -> Self {
+        Self {
+            {% for field, config in component.config_schema -%}
+            {{ field }}: {{ config.default | rust_default }},
+            {% endfor -%}
+        }
+    }
+}
+
+/// Main component struct
+#[derive(Debug)]
+pub struct {{ component.name | replace("-", "") | title }} {
+    config: {{ component.name | replace("-", "") | title }}Config,
+}
+
+impl {{ component.name | replace("-", "") | title }} {
+    /// Create a new instance with default configuration
+    pub fn new() -> Self {
+        Self::with_config({{ component.name | replace("-", "") | title }}Config::default())
+    }
+    
+    /// Create a new instance with custom configuration
+    pub fn with_config(config: {{ component.name | replace("-", "") | title }}Config) -> Self {
+        Self { config }
+    }
+}
+
+/// Component-specific error type
+#[derive(Debug, thiserror::Error)]
+pub enum {{ component.name | replace("-", "") | title }}Error {
+    /// Configuration error
+    #[error("Configuration error: {0}")]
+    Config(String),
+    
+    /// Runtime error
+    #[error("Runtime error: {0}")]
+    Runtime(String),
+}
+
+/// Component result type
+pub type Result<T> = std::result::Result<T, {{ component.name | replace("-", "") | title }}Error>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_config() {
+        let config = {{ component.name | replace("-", "") | title }}Config::default();
+        // Add assertions for default values
+    }
+
+    #[test] 
+    fn test_component_creation() {
+        let component = {{ component.name | replace("-", "") | title }}::new();
+        // Add assertions for component creation
+    }
+}
+EOF
+            fi
+            
+            # Create tests directory structure
+            if [ ! -d "tests" ]; then
+              echo "🧪 Creating test structure..."
+              mkdir -p tests
+              cat > tests/integration.rs << 'EOF'
+//! Integration tests for {{ component.name }}
+
+use {{ component.name | replace("-", "_") }}::*;
+
+#[tokio::test]
+async fn test_integration() {
+    // Integration test implementation
+    let component = {{ component.name | replace("-", "") | title }}::new();
+    // Add integration test logic
+}
+EOF
+            fi
+            
+            # Create benchmarks
+            if [ ! -d "benches" ]; then
+              echo "📊 Creating benchmark structure..."
+              mkdir -p benches
+              cat > benches/benchmarks.rs << 'EOF'
+//! Benchmarks for {{ component.name }}
+
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use {{ component.name | replace("-", "_") }}::*;
+
+fn benchmark_main_operation(c: &mut Criterion) {
+    c.bench_function("{{ component.name }}_main_operation", |b| {
+        b.iter(|| {
+            let component = {{ component.name | replace("-", "") | title }}::new();
+            black_box(component);
+        });
+    });
+}
+
+criterion_group!(benches, benchmark_main_operation);
+criterion_main!(benches);
+EOF
+            fi
+            
+            echo "✅ Component development environment ready!"
+          '';
+        };
+
+        # Checks for CI
+        checks = {
+          test = componentTests;
+          format = pkgs.runCommand "check-format" {} ''
+            cd ${./.}
+            ${pkgs.rustfmt}/bin/cargo fmt --check
+            touch $out
+          '';
+          clippy = pkgs.runCommand "check-clippy" {} ''
+            cd ${./.}
+            ${pkgs.clippy}/bin/cargo clippy -- -D warnings
+            touch $out
+          '';
+        };
+
+        # Apps for easy execution
+        apps.default = flake-utils.lib.mkApp {
+          drv = componentPackage;
+        };
+
+        # Expose component metadata for discovery
+        componentInfo = componentMeta // {
+          rustDependencies = rustDependencies;
+          testDependencies = testDependencies;
+          buildInputs = map (pkg: pkg.pname or pkg.name) buildInputs;
+          nativeBuildInputs = map (pkg: pkg.pname or pkg.name) nativeBuildInputs;
+          devShellPackages = map (pkg: pkg.pname or pkg.name) devShellPackages;
+        };
+      });
+}

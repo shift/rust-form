@@ -1,0 +1,26 @@
+<!-- Basic button component with customizable styling -->
+<button 
+  type="{{ type | default(value='button') }}"
+  class="
+    px-4 py-2 rounded
+    {% if variant == 'primary' %}
+      bg-blue-600 text-white hover:bg-blue-700
+    {% elif variant == 'secondary' %}
+      bg-gray-600 text-white hover:bg-gray-700
+    {% elif variant == 'danger' %}
+      bg-red-600 text-white hover:bg-red-700
+    {% else %}
+      bg-gray-200 text-gray-800 hover:bg-gray-300
+    {% endif %}
+    {% if disabled %}
+      opacity-50 cursor-not-allowed
+    {% else %}
+      transition-colors duration-200
+    {% endif %}
+    {{ class | default(value='') }}
+  "
+  {% if disabled %}disabled{% endif %}
+  {% if onclick %}onclick="{{ onclick }}"{% endif %}
+>
+  {{ content | default(value='Button') }}
+</button>

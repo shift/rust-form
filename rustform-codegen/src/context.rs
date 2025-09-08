@@ -45,6 +45,7 @@ pub struct ModelContext {
     pub primary_key_type: Option<String>,
     pub has_timestamps: bool,
     pub imports: Vec<String>,
+    pub custom_logic: Option<CustomLogicContext>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -104,6 +105,7 @@ pub struct EndpointContext {
     pub pagination: Option<PaginationContext>,
     pub filters: Vec<FilterContext>,
     pub handler_functions: Vec<String>,
+    pub custom_handlers: Option<CustomHandlersContext>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -248,6 +250,23 @@ impl ContextBuilder {
                 
                 let imports = Self::generate_model_imports(&fields);
                 
+                let custom_logic = model.custom_logic.as_ref().map(|cl| CustomLogicContext {
+                    file: cl.file.clone(),
+                    dependencies: cl.dependencies.clone(),
+                    methods: cl.methods.clone(),
+                    traits: cl.traits.clone(),
+                    hooks: cl.hooks.as_ref().map(|h| CustomHooksContext {
+                        before_create: h.before_create.clone(),
+                        after_create: h.after_create.clone(),
+                        before_update: h.before_update.clone(),
+                        after_update: h.after_update.clone(),
+                        before_delete: h.before_delete.clone(),
+                        after_delete: h.after_delete.clone(),
+                        before_query: h.before_query.clone(),
+                        after_query: h.after_query.clone(),
+                    }),
+                });
+                
                 ModelContext {
                     name: name.clone(),
                     table_name: model.table_name.clone(),
@@ -260,6 +279,7 @@ impl ContextBuilder {
                     primary_key_type,
                     has_timestamps,
                     imports,
+                    custom_logic,
                 }
             })
             .collect()
@@ -341,6 +361,18 @@ impl ContextBuilder {
                 let filters = Self::build_filters_context(&endpoint.filters);
                 let handler_functions = Self::generate_handler_functions(&operations, &endpoint.path);
                 
+                let custom_handlers = endpoint.custom_handlers.as_ref().map(|ch| CustomHandlersContext {
+                    file: ch.file.clone(),
+                    dependencies: ch.dependencies.clone(),
+                    handlers: ch.handlers.clone(),
+                    middleware: ch.middleware.clone(),
+                    validation: ch.validation.as_ref().map(|v| CustomValidationContext {
+                        before_create: v.before_create.clone(),
+                        before_update: v.before_update.clone(),
+                        custom_validators: v.custom_validators.clone(),
+                    }),
+                });
+                
                 EndpointContext {
                     path: endpoint.path.clone(),
                     model_name: endpoint.model.clone(),
@@ -352,6 +384,7 @@ impl ContextBuilder {
                     pagination,
                     filters,
                     handler_functions,
+                    custom_handlers,
                 }
             })
             .collect()
@@ -698,4 +731,41 @@ impl ContextBuilder {
         
         result
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomLogicContext {
+    pub file: String,
+    pub dependencies: Vec<String>,
+    pub methods: Vec<String>,
+    pub traits: Vec<String>,
+    pub hooks: Option<CustomHooksContext>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomHooksContext {
+    pub before_create: Option<String>,
+    pub after_create: Option<String>,
+    pub before_update: Option<String>,
+    pub after_update: Option<String>,
+    pub before_delete: Option<String>,
+    pub after_delete: Option<String>,
+    pub before_query: Option<String>,
+    pub after_query: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomHandlersContext {
+    pub file: String,
+    pub dependencies: Vec<String>,
+    pub handlers: Vec<String>,
+    pub middleware: Vec<String>,
+    pub validation: Option<CustomValidationContext>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomValidationContext {
+    pub before_create: Option<String>,
+    pub before_update: Option<String>,
+    pub custom_validators: Vec<String>,
 }

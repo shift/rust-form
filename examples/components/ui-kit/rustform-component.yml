@@ -1,0 +1,28 @@
+name: ui-kit
+version: "1.0.0"
+description: "Basic UI components for Rust-form projects"
+author: "rust-form"
+homepage: "https://github.com/rust-form/ui-components"
+keywords: []
+dependencies: {}
+files: []
+
+provides:
+  templates:
+    - name: "button.tera"
+      path: "button.tera"
+      description: "Reusable button component template"
+      variables: []
+      target: Frontend
+    - name: "form.tera"
+      path: "form.tera"
+      description: "Form wrapper component template"
+      variables: []
+      target: Frontend
+    - name: "input.tera"
+      path: "input.tera"
+      description: "Input field component template"
+      variables: []
+      target: Frontend
+  assets: []
+  hooks: []

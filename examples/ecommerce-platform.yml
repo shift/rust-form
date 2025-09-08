@@ -1,0 +1,447 @@
+# Advanced E-commerce Platform Configuration
+# Demonstrates sophisticated YAML-driven logic integration
+
+project_name: ecommerce_platform
+version: "1.0.0"
+
+database:
+  type: postgres
+  url_env: DATABASE_URL
+  pool_size: 20
+  timeout: 30
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+api:
+  prefix: "/api/v1"
+  
+  models:
+    User:
+      table_name: users
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+          auto_increment: false
+        email:
+          type: string
+          required: true
+          unique: true
+          max_length: 255
+          regex: "^[^@]+@[^@]+\\.[^@]+$"
+        password_hash:
+          type: string
+          required: true
+          max_length: 255
+        first_name:
+          type: string
+          required: true
+          max_length: 100
+        last_name:
+          type: string
+          required: true
+          max_length: 100
+        phone:
+          type: string
+          max_length: 20
+        is_active:
+          type: boolean
+          default: true
+        is_verified:
+          type: boolean
+          default: false
+        last_login:
+          type: datetime
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      custom_logic:
+        file: "src/user_extensions.rs"
+        dependencies:
+          - "bcrypt = \"0.15\""
+          - "jsonwebtoken = \"9.0\""
+          - "uuid = \"1.6\""
+          - "validator = \"0.16\""
+        methods:
+          - "hash_password"
+          - "verify_password"
+          - "generate_auth_token"
+          - "verify_auth_token"
+          - "send_verification_email"
+          - "activate_account"
+          - "reset_password_request"
+        hooks:
+          before_create: "validate_and_hash_password"
+          after_create: "send_welcome_email"
+          before_update: "validate_email_change"
+          after_update: "log_profile_update"
+      indexes:
+        - name: idx_users_email
+          fields: [email]
+          unique: true
+        - name: idx_users_active
+          fields: [is_active]
+
+    Product:
+      table_name: products
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        name:
+          type: string
+          required: true
+          max_length: 255
+        description:
+          type: text
+        sku:
+          type: string
+          required: true
+          unique: true
+          max_length: 100
+        price:
+          type: decimal
+          required: true
+          min_value: 0
+        cost:
+          type: decimal
+          min_value: 0
+        category_id:
+          type: uuid
+          required: true
+        inventory_count:
+          type: integer
+          default: 0
+          min_value: 0
+        is_active:
+          type: boolean
+          default: true
+        weight:
+          type: decimal
+        dimensions:
+          type: json
+        tags:
+          type: json
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      relationships:
+        category:
+          type: many_to_one
+          model: Category
+          foreign_key: category_id
+          on_delete: restrict
+        order_items:
+          type: one_to_many
+          model: OrderItem
+          foreign_key: product_id
+      custom_logic:
+        file: "src/product_extensions.rs"
+        dependencies:
+          - "rust_decimal = \"1.35\""
+          - "serde_json = \"1.0\""
+        methods:
+          - "calculate_profit_margin"
+          - "update_inventory"
+          - "check_stock_availability"
+          - "generate_sku"
+          - "apply_discount"
+          - "calculate_shipping_weight"
+        hooks:
+          before_create: "validate_product_data"
+          after_create: "index_for_search"
+          before_update: "track_price_changes"
+          after_update: "update_search_index"
+          before_delete: "check_active_orders"
+      indexes:
+        - name: idx_products_sku
+          fields: [sku]
+          unique: true
+        - name: idx_products_category
+          fields: [category_id]
+        - name: idx_products_active
+          fields: [is_active]
+
+    Order:
+      table_name: orders
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        user_id:
+          type: uuid
+          required: true
+        order_number:
+          type: string
+          required: true
+          unique: true
+        status:
+          type: string
+          required: true
+          default: "pending"
+          max_length: 50
+        subtotal:
+          type: decimal
+          required: true
+        tax_amount:
+          type: decimal
+          default: 0
+        shipping_amount:
+          type: decimal
+          default: 0
+        discount_amount:
+          type: decimal
+          default: 0
+        total_amount:
+          type: decimal
+          required: true
+        currency:
+          type: string
+          default: "USD"
+          max_length: 3
+        payment_method:
+          type: string
+          max_length: 50
+        shipping_address:
+          type: json
+          required: true
+        billing_address:
+          type: json
+          required: true
+        notes:
+          type: text
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      relationships:
+        user:
+          type: many_to_one
+          model: User
+          foreign_key: user_id
+          on_delete: restrict
+        order_items:
+          type: one_to_many
+          model: OrderItem
+          foreign_key: order_id
+      custom_logic:
+        file: "src/order_extensions.rs"
+        dependencies:
+          - "rust_decimal = \"1.35\""
+          - "chrono = \"0.4\""
+          - "serde_json = \"1.0\""
+        methods:
+          - "calculate_totals"
+          - "apply_tax"
+          - "apply_shipping"
+          - "process_payment"
+          - "send_confirmation_email"
+          - "generate_invoice"
+          - "cancel_order"
+          - "refund_order"
+        hooks:
+          before_create: "validate_order_data"
+          after_create: "reserve_inventory"
+          before_update: "validate_status_transition"
+          after_update: "notify_status_change"
+          before_delete: "handle_cancellation"
+      indexes:
+        - name: idx_orders_user
+          fields: [user_id]
+        - name: idx_orders_status
+          fields: [status]
+        - name: idx_orders_created
+          fields: [created_at]
+
+  endpoints:
+    - path: /auth
+      model: User
+      crud:
+        create: false
+        read_all: false
+        read_one: false
+        update: false
+        delete: false
+      custom_handlers:
+        file: "src/auth_handlers.rs"
+        dependencies:
+          - "jsonwebtoken = \"9.0\""
+          - "bcrypt = \"0.15\""
+        handlers:
+          - "login"
+          - "logout"
+          - "register"
+          - "refresh_token"
+          - "forgot_password"
+          - "reset_password"
+          - "verify_email"
+        middleware:
+          - "rate_limit_auth"
+        validation:
+          before_create: "validate_registration"
+
+    - path: /users
+      model: User
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: false
+      auth:
+        type: jwt
+        required: true
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+      filters:
+        - field: email
+          type: contains
+        - field: is_active
+          type: exact
+        - field: created_at
+          type: between
+
+    - path: /products
+      model: Product
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+      pagination:
+        default_page_size: 50
+        max_page_size: 200
+      filters:
+        - field: name
+          type: contains
+        - field: category_id
+          type: exact
+        - field: is_active
+          type: exact
+        - field: price
+          type: between
+      custom_handlers:
+        file: "src/product_handlers.rs"
+        handlers:
+          - "search_products"
+          - "bulk_update_inventory"
+          - "export_catalog"
+          - "import_catalog"
+
+    - path: /orders
+      model: Order
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: false
+      auth:
+        type: jwt
+        required: true
+      pagination:
+        default_page_size: 25
+        max_page_size: 100
+      filters:
+        - field: status
+          type: exact
+        - field: user_id
+          type: exact
+        - field: created_at
+          type: between
+        - field: total_amount
+          type: between
+      custom_handlers:
+        file: "src/order_handlers.rs"
+        dependencies:
+          - "futures = \"0.3\""
+        handlers:
+          - "checkout"
+          - "cancel_order"
+          - "process_refund"
+          - "track_shipment"
+          - "order_analytics"
+        middleware:
+          - "order_permissions"
+
+frontend:
+  target: react
+  typescript_output_dir: "frontend/src/generated"
+  generate_ui_for: ["User", "Product", "Order"]
+  auto_generate_types: true
+  api_base_url: "http://localhost:8080/api/v1"
+  
+  components:
+    User:
+      generate: ["form", "list", "card", "profile"]
+      form_fields: ["email", "first_name", "last_name", "phone"]
+      list_columns: ["email", "first_name", "last_name", "is_active", "created_at"]
+      features: ["create", "edit", "search", "filter", "export"]
+      pagination: true
+      search_fields: ["email", "first_name", "last_name"]
+    
+    Product:
+      generate: ["form", "list", "card", "detail"]
+      form_fields: ["name", "description", "sku", "price", "category_id", "inventory_count"]
+      list_columns: ["name", "sku", "price", "inventory_count", "is_active"]
+      features: ["create", "edit", "delete", "search", "filter", "bulk_edit"]
+      pagination: true
+      search_fields: ["name", "sku", "description"]
+      relationships:
+        category:
+          display_field: name
+    
+    Order:
+      generate: ["list", "detail", "status"]
+      list_columns: ["order_number", "user_id", "status", "total_amount", "created_at"]
+      features: ["search", "filter", "export", "analytics"]
+      pagination: true
+      search_fields: ["order_number"]
+      relationships:
+        user:
+          display_field: email
+  
+  framework_config:
+    react:
+      version: "18"
+      typescript: true
+      state_management: "zustand"
+      styling: "tailwind"
+      forms: "react-hook-form"
+      routing: "react-router"
+      build_tool: "vite"
+
+middleware:
+  - logger: true
+  
+  - cors:
+      allow_origin: "*"
+      allow_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      allow_headers: ["Content-Type", "Authorization"]
+      allow_credentials: false
+  
+  - rate_limit:
+      max_requests: 100
+      window_seconds: 60
+      burst: 10
+  
+  - security:
+      helmet: true
+      content_security_policy: "default-src 'self'"
+      x_frame_options: "DENY"
+
+components:
+  ui-kit: "github:rustform-org/ui-components@v2.1.0"
+  payment-forms: "github:rustform-org/payment-components@v1.5.0"

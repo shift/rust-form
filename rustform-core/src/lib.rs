@@ -2,11 +2,13 @@ pub mod config;
 pub mod database;
 pub mod error;
 pub mod types;
+pub mod component;
 
 pub use config::*;
 pub use database::*;
 pub use error::*;
 pub use types::*;
+pub use component::*;
 
 // Re-exports for generated code
 pub use axum;

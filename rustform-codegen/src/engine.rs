@@ -3,9 +3,15 @@ use crate::templates::templates_dir::get_templates;
 use tera::{Tera, Context, Value, Result as TeraResult};
 use std::collections::HashMap;
 use include_dir::Dir;
+use rustform_core::component::{ComponentSystem, ComponentUri, ComponentLockfile};
+use rustform_core::{Config, GeneratedProject};
+use tracing::{debug, info, warn};
+use std::str::FromStr;
+use std::path::Path;
 
 pub struct TemplateEngine {
     tera: Tera,
+    component_system: ComponentSystem,
 }
 
 impl TemplateEngine {
@@ -50,8 +56,15 @@ impl TemplateEngine {
         tera.register_function("generate_id", generate_id_function);
         tera.register_function("current_year", current_year_function);
         tera.register_function("format_imports", format_imports_function);
+        tera.register_function("custom_dependencies", custom_dependencies_function);
+        tera.register_function("custom_methods", custom_methods_function);
+        tera.register_function("custom_hooks", custom_hooks_function);
         
-        Ok(Self { tera })
+        // Initialize component system
+        let component_system = ComponentSystem::new()
+            .map_err(|e| CodeGenError::Template(format!("Failed to initialize component system: {}", e)))?;
+        
+        Ok(Self { tera, component_system })
     }
     
     pub fn render_template(&self, template_name: &str, context: &Context) -> Result<String, CodeGenError> {
@@ -69,9 +82,206 @@ impl TemplateEngine {
     pub fn list_templates(&self) -> Vec<String> {
         self.tera.get_template_names().map(|s| s.to_string()).collect()
     }
+
+    /// Install and use components from manifest
+    pub async fn install_components(&mut self, config: &Config) -> Result<(), CodeGenError> {
+        if let Some(components) = &config.components {
+            info!("Installing {} components", components.len());
+            
+            for (component_name, component_spec) in components {
+                debug!("Installing component: {}", component_name);
+                
+                let component_uri = ComponentUri::from_str(component_spec)
+                    .map_err(|e| CodeGenError::Template(format!("Invalid component URI '{}': {}", component_spec, e)))?;
+                
+                let component = self.component_system.install_component(&component_uri).await
+                    .map_err(|e| CodeGenError::Template(format!("Failed to install component '{}': {}", component_name, e)))?;
+                
+                // Add component templates to Tera
+                for (template_name, template_content) in &component.content.templates {
+                    let full_template_name = format!("components/{}/{}", component_name, template_name);
+                    self.tera.add_raw_template(&full_template_name, template_content)
+                        .map_err(|e| CodeGenError::Template(format!("Failed to add component template '{}': {}", full_template_name, e)))?;
+                }
+                
+                info!("Successfully installed component: {}", component_name);
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Generate project with components
+    pub async fn generate_with_components(
+        &mut self, 
+        config: &Config, 
+        output_dir: &Path
+    ) -> Result<GeneratedProject, CodeGenError> {
+        // Install components first
+        self.install_components(config).await?;
+        
+        // Generate lockfile for reproducible builds
+        let lockfile = self.generate_lockfile(config).await?;
+        lockfile.save(output_dir.join("rustform.lock"))
+            .map_err(|e| CodeGenError::Template(format!("Failed to save lockfile: {}", e)))?;
+        
+        Ok(GeneratedProject {
+            name: config.project_name.clone(),
+            files: vec![], // This would be filled in by the calling pipeline
+        })
+    }
+
+    /// Generate a lockfile for the current configuration
+    pub async fn generate_lockfile(&mut self, config: &Config) -> Result<ComponentLockfile, CodeGenError> {
+        let mut lockfile = ComponentLockfile::new();
+        lockfile.resolution_tree.root = config.project_name.clone();
+        
+        if let Some(components) = &config.components {
+            for (component_name, component_spec) in components {
+                let component_uri = ComponentUri::from_str(component_spec)
+                    .map_err(|e| CodeGenError::Template(format!("Invalid component URI '{}': {}", component_spec, e)))?;
+                
+                // Fetch manifest to get dependency information
+                let manifest = self.component_system.fetch_manifest(&component_uri).await
+                    .map_err(|e| CodeGenError::Template(format!("Failed to fetch manifest for '{}': {}", component_name, e)))?;
+                
+                // Add to lockfile
+                let locked_component = rustform_core::component::LockedComponent {
+                    uri: component_spec.clone(),
+                    version: component_uri.version.clone().unwrap_or_else(|| "latest".to_string()),
+                    resolved: component_uri.resolve_url()
+                        .map_err(|e| CodeGenError::Template(format!("Failed to resolve URL for '{}': {}", component_name, e)))?,
+                    integrity: manifest.integrity.unwrap_or_default(),
+                    dependencies: manifest.dependencies.clone(),
+                    resolved_at: chrono::Utc::now().to_rfc3339(),
+                    size: None,
+                };
+                
+                lockfile.dependencies.insert(component_name.clone(), locked_component);
+            }
+        }
+        
+        Ok(lockfile)
+    }
+
+    /// Render component template with context
+    pub fn render_component_template(
+        &self, 
+        component_name: &str, 
+        template_name: &str, 
+        context: &Context
+    ) -> Result<String, CodeGenError> {
+        let full_template_name = format!("components/{}/{}", component_name, template_name);
+        self.render_template(&full_template_name, context)
+    }
+
+    /// Get available components and their templates
+    pub fn list_component_templates(&self) -> HashMap<String, Vec<String>> {
+        let mut components = HashMap::new();
+        
+        for template_name in self.tera.get_template_names() {
+            if template_name.starts_with("components/") {
+                let parts: Vec<&str> = template_name.splitn(3, '/').collect();
+                if parts.len() >= 3 {
+                    let component_name = parts[1];
+                    let template_file = parts[2];
+                    
+                    components
+                        .entry(component_name.to_string())
+                        .or_insert_with(Vec::new)
+                        .push(template_file.to_string());
+                }
+            }
+        }
+        
+        components
+    }
+
+    /// Validate that all required components are available
+    pub async fn validate_components(&mut self, config: &Config) -> Result<Vec<String>, CodeGenError> {
+        let mut missing_components = Vec::new();
+        
+        if let Some(components) = &config.components {
+            for (component_name, component_spec) in components {
+                let component_uri = ComponentUri::from_str(component_spec)
+                    .map_err(|e| CodeGenError::Template(format!("Invalid component URI '{}': {}", component_spec, e)))?;
+                
+                match self.component_system.check_availability(&component_uri).await {
+                    Ok(true) => {
+                        debug!("Component '{}' is available", component_name);
+                    }
+                    Ok(false) => {
+                        warn!("Component '{}' is not available", component_name);
+                        missing_components.push(component_name.clone());
+                    }
+                    Err(e) => {
+                        warn!("Failed to check availability of component '{}': {}", component_name, e);
+                        missing_components.push(component_name.clone());
+                    }
+                }
+            }
+        }
+        
+        Ok(missing_components)
+    }
+
+    /// Add component-specific filters and functions to Tera
+    pub fn register_component_helpers(&mut self) {
+        // Register component-related Tera functions
+        self.tera.register_function("component_template", component_template_function);
+        self.tera.register_function("component_asset", component_asset_function);
+        self.tera.register_function("list_components", list_components_function);
+        
+        // Register component-related filters
+        self.tera.register_filter("component_path", component_path_filter);
+    }
 }
 
-// Custom filters
+// Component-related Tera functions
+fn component_template_function(args: &HashMap<String, Value>) -> TeraResult<Value> {
+    let component = args.get("component")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| tera::Error::msg("component parameter is required"))?;
+    
+    let template = args.get("template")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| tera::Error::msg("template parameter is required"))?;
+    
+    // Return the full template path for include or extends
+    Ok(Value::String(format!("components/{}/{}", component, template)))
+}
+
+fn component_asset_function(args: &HashMap<String, Value>) -> TeraResult<Value> {
+    let component = args.get("component")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| tera::Error::msg("component parameter is required"))?;
+    
+    let asset = args.get("asset")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| tera::Error::msg("asset parameter is required"))?;
+    
+    // Return the asset path
+    Ok(Value::String(format!("/assets/{}/{}", component, asset)))
+}
+
+fn list_components_function(_args: &HashMap<String, Value>) -> TeraResult<Value> {
+    // This would need access to the template engine instance
+    // For now, return empty array
+    Ok(Value::Array(vec![]))
+}
+
+fn component_path_filter(value: &Value, args: &HashMap<String, Value>) -> TeraResult<Value> {
+    let component = args.get("component")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| tera::Error::msg("component parameter is required"))?;
+    
+    let path = value.as_str()
+        .ok_or_else(|| tera::Error::msg("Value is not a string"))?;
+    
+    Ok(Value::String(format!("components/{}/{}", component, path)))
+}
+
+// Existing filters and functions (keeping the original implementations)
 fn snake_case_filter(value: &Value, _: &HashMap<String, Value>) -> TeraResult<Value> {
     let s = value.as_str().ok_or_else(|| tera::Error::msg("Value is not a string"))?;
     Ok(Value::String(to_snake_case(s)))
@@ -227,6 +437,58 @@ fn format_imports_function(args: &HashMap<String, Value>) -> TeraResult<Value> {
     Ok(Value::String(formatted.join("\n")))
 }
 
+fn custom_dependencies_function(args: &HashMap<String, Value>) -> TeraResult<Value> {
+    let empty_vec = vec![];
+    let dependencies = args.get("dependencies").and_then(|v| v.as_array()).unwrap_or(&empty_vec);
+    let formatted = dependencies
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect::<Vec<_>>();
+    
+    Ok(Value::Array(formatted.into_iter().map(|s| Value::String(s.to_string())).collect()))
+}
+
+fn custom_methods_function(args: &HashMap<String, Value>) -> TeraResult<Value> {
+    let empty_vec = vec![];
+    let methods = args.get("methods").and_then(|v| v.as_array()).unwrap_or(&empty_vec);
+    let formatted = methods
+        .iter()
+        .filter_map(|v| v.as_str())
+        .map(|method| format!("    pub fn {}(&self) -> Result<(), Box<dyn std::error::Error>> {{\n        // TODO: Implement {}\n        Ok(())\n    }}", method, method))
+        .collect::<Vec<_>>();
+    
+    Ok(Value::String(formatted.join("\n\n")))
+}
+
+fn custom_hooks_function(args: &HashMap<String, Value>) -> TeraResult<Value> {
+    let hooks = args.get("hooks");
+    if hooks.is_none() {
+        return Ok(Value::String("".to_string()));
+    }
+    
+    let mut hook_implementations = Vec::new();
+    
+    // Extract hook functions if they exist
+    if let Some(hooks_obj) = hooks.and_then(|h| h.as_object()) {
+        for (hook_name, hook_fn) in hooks_obj {
+            if let Some(fn_name) = hook_fn.as_str() {
+                let hook_impl = match hook_name.as_str() {
+                    "before_create" => format!("    async fn before_create(&self, data: &mut CreateData) -> Result<(), HookError> {{\n        self.{}(data).await\n    }}", fn_name),
+                    "after_create" => format!("    async fn after_create(&self, entity: &Entity) -> Result<(), HookError> {{\n        self.{}(entity).await\n    }}", fn_name),
+                    "before_update" => format!("    async fn before_update(&self, id: &str, data: &mut UpdateData) -> Result<(), HookError> {{\n        self.{}(id, data).await\n    }}", fn_name),
+                    "after_update" => format!("    async fn after_update(&self, entity: &Entity) -> Result<(), HookError> {{\n        self.{}(entity).await\n    }}", fn_name),
+                    "before_delete" => format!("    async fn before_delete(&self, id: &str) -> Result<(), HookError> {{\n        self.{}(id).await\n    }}", fn_name),
+                    "after_delete" => format!("    async fn after_delete(&self, id: &str) -> Result<(), HookError> {{\n        self.{}(id).await\n    }}", fn_name),
+                    _ => continue,
+                };
+                hook_implementations.push(hook_impl);
+            }
+        }
+    }
+    
+    Ok(Value::String(hook_implementations.join("\n\n")))
+}
+
 // Utility functions for case conversion
 fn to_snake_case(s: &str) -> String {
     let mut result = String::new();
@@ -287,5 +549,15 @@ mod tests {
             Ok(_) => {}, // Templates directory exists
             Err(_) => {}, // Templates directory doesn't exist - expected for now
         }
+    }
+
+    #[test]
+    fn test_component_template_function() {
+        let mut args = HashMap::new();
+        args.insert("component".to_string(), Value::String("ui-kit".to_string()));
+        args.insert("template".to_string(), Value::String("button.tera".to_string()));
+        
+        let result = component_template_function(&args).unwrap();
+        assert_eq!(result.as_str().unwrap(), "components/ui-kit/button.tera");
     }
 }

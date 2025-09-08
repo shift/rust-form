@@ -1,0 +1,368 @@
+project_name: rustform_studio
+version: "0.1.0"
+
+database:
+  type: sqlite
+  url_env: DATABASE_URL
+
+server:
+  host: "127.0.0.1"
+  port: 4000
+
+api:
+  models:
+    Config:
+      table_name: configs
+      fields:
+        id:
+          type: integer
+          primary_key: true
+          auto_increment: true
+        name:
+          type: string
+          required: true
+          max_length: 255
+        description:
+          type: text
+        yaml_content:
+          type: text
+          required: true
+        is_template:
+          type: boolean
+          default: false
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      indexes:
+        - name: idx_configs_name
+          fields: [name]
+        - name: idx_configs_is_template
+          fields: [is_template]
+      custom_logic:
+        file: "src/config_extensions.rs"
+        dependencies: 
+          - "serde_yaml = \"0.9\""
+          - "regex = \"1.10\""
+        methods:
+          - "validate_yaml_syntax"
+          - "extract_project_info"
+          - "sanitize_config"
+        hooks:
+          before_create: "validate_and_sanitize"
+          after_create: "log_config_creation"
+          before_update: "validate_yaml_changes"
+
+    Component:
+      table_name: components
+      fields:
+        id:
+          type: integer
+          primary_key: true
+          auto_increment: true
+        name:
+          type: string
+          required: true
+          unique: true
+        uri:
+          type: string
+          required: true
+        manifest_data:
+          type: json
+        description:
+          type: text
+        version:
+          type: string
+        author:
+          type: string
+        keywords:
+          type: json
+        cached_at:
+          type: datetime
+          auto_now: true
+      indexes:
+        - name: idx_components_name
+          fields: [name]
+        - name: idx_components_author
+          fields: [author]
+      custom_logic:
+        file: "src/component_extensions.rs"
+        dependencies:
+          - "semver = \"1.0\""
+          - "url = \"2.4\""
+        methods:
+          - "validate_uri_format"
+          - "fetch_remote_manifest"
+          - "cache_component_data"
+          - "check_version_compatibility"
+        hooks:
+          before_create: "validate_component_uri"
+          after_create: "fetch_and_cache_manifest"
+          before_update: "check_version_updates"
+
+    Project:
+      table_name: projects
+      fields:
+        id:
+          type: integer
+          primary_key: true
+          auto_increment: true
+        name:
+          type: string
+          required: true
+        config_id:
+          type: integer
+          required: true
+        generated_at:
+          type: datetime
+          auto_now_add: true
+        file_path:
+          type: string
+        generation_log:
+          type: text
+        status:
+          type: string
+          default: "pending"
+          max_length: 50
+      relationships:
+        config:
+          type: many_to_one
+          model: Config
+          foreign_key: config_id
+          on_delete: cascade
+      indexes:
+        - name: idx_projects_config_id
+          fields: [config_id]
+        - name: idx_projects_status
+          fields: [status]
+      custom_logic:
+        file: "src/project_extensions.rs"
+        dependencies:
+          - "tokio-fs = \"0.1\""
+          - "zip = \"0.6\""
+        methods:
+          - "generate_project_files"
+          - "cleanup_old_files"
+          - "create_project_archive"
+          - "validate_generation_status"
+        hooks:
+          before_create: "validate_project_config"
+          after_create: "initiate_generation"
+          after_update: "track_status_changes"
+          before_delete: "cleanup_project_files"
+
+    Template:
+      table_name: templates
+      fields:
+        id:
+          type: integer
+          primary_key: true
+          auto_increment: true
+        name:
+          type: string
+          required: true
+        category:
+          type: string
+          required: true
+          max_length: 100
+        description:
+          type: text
+        yaml_content:
+          type: text
+          required: true
+        tags:
+          type: json
+        is_public:
+          type: boolean
+          default: true
+        created_at:
+          type: datetime
+          auto_now_add: true
+      indexes:
+        - name: idx_templates_category
+          fields: [category]
+        - name: idx_templates_is_public
+          fields: [is_public]
+      custom_logic:
+        file: "src/template_extensions.rs"
+        dependencies:
+          - "serde_yaml = \"0.9\""
+        methods:
+          - "validate_template_structure"
+          - "extract_template_metadata"
+          - "apply_template_substitutions"
+        hooks:
+          before_create: "validate_template_yaml"
+          before_update: "validate_template_changes"
+
+  endpoints:
+    - path: /configs
+      model: Config
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+      filters:
+        - field: name
+          type: contains
+        - field: is_template
+          type: exact
+      custom_handlers:
+        file: "src/config_handlers.rs"
+        dependencies:
+          - "actix-multipart = \"0.6\""
+        handlers:
+          - "import_yaml_file"
+          - "export_config"
+          - "validate_config_endpoint"
+        validation:
+          before_create: "validate_config_yaml"
+          before_update: "validate_config_changes"
+
+    - path: /components
+      model: Component
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+      pagination:
+        default_page_size: 50
+        max_page_size: 200
+      filters:
+        - field: name
+          type: contains
+        - field: author
+          type: exact
+      custom_handlers:
+        file: "src/component_handlers.rs"
+        handlers:
+          - "refresh_component"
+          - "bulk_install_components"
+          - "check_component_updates"
+
+    - path: /projects
+      model: Project
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+      filters:
+        - field: name
+          type: contains
+        - field: status
+          type: exact
+        - field: config_id
+          type: exact
+      custom_handlers:
+        file: "src/project_handlers.rs"
+        dependencies:
+          - "futures = \"0.3\""
+        handlers:
+          - "trigger_generation"
+          - "download_project"
+          - "get_generation_status"
+        middleware:
+          - "auth_required"
+          - "rate_limit_generation"
+
+    - path: /templates
+      model: Template
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+      pagination:
+        default_page_size: 30
+        max_page_size: 100
+      filters:
+        - field: name
+          type: contains
+        - field: category
+          type: exact
+        - field: is_public
+          type: exact
+      custom_handlers:
+        file: "src/template_handlers.rs"
+        handlers:
+          - "clone_template"
+          - "apply_template_to_config"
+          - "get_template_categories"
+
+frontend:
+  target: react
+  typescript_output_dir: "frontend/src/generated"
+  generate_ui_for: ["Config", "Component", "Project", "Template"]
+  auto_generate_types: true
+  api_base_url: "http://localhost:4000"
+  
+  components:
+    Config:
+      generate: ["form", "list", "card"]
+      form_fields: ["name", "description", "yaml_content", "is_template"]
+      list_columns: ["name", "description", "is_template", "created_at", "updated_at"]
+      features: ["create", "edit", "delete", "search", "filter"]
+      pagination: true
+      search_fields: ["name", "description"]
+    
+    Component:
+      generate: ["list", "card"]
+      list_columns: ["name", "version", "author", "description", "cached_at"]
+      features: ["search", "filter"]
+      pagination: true
+      search_fields: ["name", "description", "author"]
+    
+    Project:
+      generate: ["list", "card"]
+      list_columns: ["name", "status", "generated_at"]
+      features: ["delete", "search", "filter"]
+      pagination: true
+      search_fields: ["name"]
+      relationships:
+        config:
+          display_field: name
+    
+    Template:
+      generate: ["form", "list", "card"]
+      form_fields: ["name", "category", "description", "yaml_content", "tags", "is_public"]
+      list_columns: ["name", "category", "is_public", "created_at"]
+      features: ["create", "edit", "delete", "search", "filter"]
+      pagination: true
+      search_fields: ["name", "description"]
+  
+  framework_config:
+    react:
+      version: "18"
+      typescript: true
+      state_management: "react-query"
+      styling: "tailwind"
+      forms: "react-hook-form"
+      routing: "react-router"
+      build_tool: "vite"
+
+middleware:
+  - logger: true
+  
+  - cors:
+      allow_origin: "*"
+      allow_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      allow_headers: ["Content-Type", "Authorization"]
+      allow_credentials: false
+
+# components:
+#   ui-kit: "path:../examples/components/ui-kit"

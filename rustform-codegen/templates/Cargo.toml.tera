@@ -19,3 +19,24 @@ tower-http = { version = "0.4", features = ["trace", "cors"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.6", features = ["v4", "serde"] }
+
+{% set custom_deps = [] -%}
+{% for model in models -%}
+{% if model.custom_logic and model.custom_logic.dependencies -%}
+{% for dep in model.custom_logic.dependencies -%}
+{% set_global custom_deps = custom_deps | concat(with=dep) -%}
+{% endfor -%}
+{% endif -%}
+{% endfor -%}
+{% for endpoint in endpoints -%}
+{% if endpoint.custom_handlers and endpoint.custom_handlers.dependencies -%}
+{% for dep in endpoint.custom_handlers.dependencies -%}
+{% set_global custom_deps = custom_deps | concat(with=dep) -%}
+{% endfor -%}
+{% endif -%}
+{% endfor -%}
+
+# Custom dependencies
+{% for dep in custom_deps | unique -%}
+{{ dep }}
+{% endfor -%}

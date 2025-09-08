@@ -24,6 +24,10 @@ pub async fn run_cli() -> Result<(), CliError> {
             let cmd = InitCommand::new(name, directory, database);
             cmd.execute().await?;
         }
+        
+        Commands::Component { component } => {
+            component.execute().await?;
+        }
     }
     
     Ok(())

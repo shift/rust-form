@@ -1,0 +1,30 @@
+version: 1
+generated: 2025-09-08T15:57:02.405216640+00:00
+generator:
+  name: rustform
+  version: 0.1.0
+  platform:
+    os: linux
+    arch: x86_64
+    rust_version: null
+dependencies:
+  ui-kit:
+    uri: path:../examples/components/ui-kit
+    version: latest
+    resolved: ../examples/components/ui-kit
+    integrity: ''
+    dependencies: {}
+    resolved_at: 2025-09-08T15:57:02.405810652+00:00
+    size: null
+resolution_tree:
+  root: rustform_studio
+  dependencies: {}
+metadata:
+  component_count: 0
+  total_size: 0
+  resolution_stats:
+    resolution_time_ms: 0
+    http_requests: 0
+    cache_hits: 0
+    conflicts_resolved: 0
+  platform_metadata: {}

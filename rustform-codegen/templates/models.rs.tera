@@ -1,5 +1,13 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+{% for model in models -%}
+{% if model.custom_logic -%}
+// Custom logic imports
+{% for dep in model.custom_logic.dependencies -%}
+use {{ dep }};
+{% endfor -%}
+{% endif -%}
+{% endfor -%}
 
 {% for model in models -%}
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -35,6 +43,31 @@ pub struct Update{{ model.struct_name }} {
     {% endfor -%}
 }
 
+{% if model.custom_logic -%}
+// Custom logic traits and hooks
+pub trait {{ model.struct_name }}Hooks {
+    {% if model.custom_logic.hooks -%}
+    {{ custom_hooks(hooks=model.custom_logic.hooks) }}
+    {% endif -%}
+}
+
+pub trait {{ model.struct_name }}Extensions {
+    {% for method in model.custom_logic.methods -%}
+    fn {{ method }}(&self) -> Result<(), Box<dyn std::error::Error>>;
+    {% endfor -%}
+}
+
+impl {{ model.struct_name }}Extensions for {{ model.struct_name }} {
+    {% for method in model.custom_logic.methods -%}
+    fn {{ method }}(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // TODO: Implement {{ method }}
+        // This method should be implemented in {{ model.custom_logic.file }}
+        Ok(())
+    }
+    {% endfor -%}
+}
+{% endif -%}
+
 impl {{ model.struct_name }} {
     pub async fn find_all(pool: &sqlx::SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         let records = sqlx::query_as!(
@@ -60,6 +93,11 @@ impl {{ model.struct_name }} {
     }
 
     pub async fn create(pool: &sqlx::SqlitePool, new_record: Create{{ model.struct_name }}) -> Result<Self, sqlx::Error> {
+        {% if model.custom_logic and model.custom_logic.hooks and model.custom_logic.hooks.before_create -%}
+        // Execute before_create hook
+        // self.{{ model.custom_logic.hooks.before_create }}(&mut new_record)?;
+        {% endif -%}
+        
         // This is a simplified create implementation
         // In a real implementation, this would dynamically build the INSERT query
         let record = sqlx::query_as!(
@@ -69,10 +107,20 @@ impl {{ model.struct_name }} {
         .fetch_one(pool)
         .await?;
         
+        {% if model.custom_logic and model.custom_logic.hooks and model.custom_logic.hooks.after_create -%}
+        // Execute after_create hook
+        // self.{{ model.custom_logic.hooks.after_create }}(&record)?;
+        {% endif -%}
+        
         Ok(record)
     }
 
     pub async fn update(pool: &sqlx::SqlitePool, id: {{ model.primary_key_type | default(value="i64") }}, updates: Update{{ model.struct_name }}) -> Result<Self, sqlx::Error> {
+        {% if model.custom_logic and model.custom_logic.hooks and model.custom_logic.hooks.before_update -%}
+        // Execute before_update hook
+        // self.{{ model.custom_logic.hooks.before_update }}(id, &mut updates)?;
+        {% endif -%}
+        
         // This is a simplified update - a real implementation would handle optional fields
         let record = sqlx::query_as!(
             Self,
@@ -82,16 +130,31 @@ impl {{ model.struct_name }} {
         .fetch_one(pool)
         .await?;
         
+        {% if model.custom_logic and model.custom_logic.hooks and model.custom_logic.hooks.after_update -%}
+        // Execute after_update hook
+        // self.{{ model.custom_logic.hooks.after_update }}(&record)?;
+        {% endif -%}
+        
         Ok(record)
     }
 
     pub async fn delete(pool: &sqlx::SqlitePool, id: {{ model.primary_key_type | default(value="i64") }}) -> Result<(), sqlx::Error> {
+        {% if model.custom_logic and model.custom_logic.hooks and model.custom_logic.hooks.before_delete -%}
+        // Execute before_delete hook
+        // self.{{ model.custom_logic.hooks.before_delete }}(id)?;
+        {% endif -%}
+        
         sqlx::query!(
             "DELETE FROM {{ model.table_name }} WHERE {{ model.primary_key_field | default(value="id") }} = $1",
             id
         )
         .execute(pool)
         .await?;
+        
+        {% if model.custom_logic and model.custom_logic.hooks and model.custom_logic.hooks.after_delete -%}
+        // Execute after_delete hook
+        // self.{{ model.custom_logic.hooks.after_delete }}(id)?;
+        {% endif -%}
         
         Ok(())
     }

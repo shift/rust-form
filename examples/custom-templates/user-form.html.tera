@@ -1,0 +1,76 @@
+{# Custom user form template using ui-kit components #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }} - User Form</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% component_template component="ui-kit" template="card.tera" %}
+            title="Create New User"
+            header=true
+            content="
+                {% component_template component="ui-kit" template="form.tera" %}
+                    action="/api/users"
+                    method="POST"
+                    submit_text="Create User"
+                    content="
+                        {% component_template component="ui-kit" template="input.tera" %}
+                            name="name"
+                            type="text"
+                            label="Full Name"
+                            placeholder="Enter full name"
+                            required=true
+                        {% endcomponent_template %}
+
+                        {% component_template component="ui-kit" template="input.tera" %}
+                            name="email"
+                            type="email"
+                            label="Email Address"
+                            placeholder="Enter email address"
+                            required=true
+                            help="We'll never share your email with anyone else."
+                        {% endcomponent_template %}
+                    "
+                {% endcomponent_template %}
+            "
+        {% endcomponent_template %}
+
+        <div style="margin-top: 2rem;">
+            {% component_template component="ui-kit" template="card.tera" %}
+                title="Actions"
+                header=true
+                content="
+                    <div style="display: flex; gap: 1rem;">
+                        {% component_template component="ui-kit" template="button.tera" %}
+                            text="View All Users"
+                            variant="secondary"
+                            onclick="window.location.href='/users'"
+                        {% endcomponent_template %}
+
+                        {% component_template component="ui-kit" template="button.tera" %}
+                            text="Reset Form"
+                            variant="secondary"
+                            type="reset"
+                        {% endcomponent_template %}
+                    </div>
+                "
+            {% endcomponent_template %}
+        </div>
+    </div>
+</body>
+</html>

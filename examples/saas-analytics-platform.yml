@@ -1,0 +1,431 @@
+# Advanced SaaS Platform Configuration
+# Multi-tenant application with advanced custom logic
+
+project_name: saas_analytics_platform
+version: "2.0.0"
+
+database:
+  type: postgres
+  url_env: DATABASE_URL
+  pool_size: 50
+  timeout: 60
+
+server:
+  host: "0.0.0.0"
+  port: 3000
+
+api:
+  prefix: "/api/v2"
+  
+  models:
+    Organization:
+      table_name: organizations
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        name:
+          type: string
+          required: true
+          max_length: 200
+        slug:
+          type: string
+          required: true
+          unique: true
+          max_length: 100
+        plan:
+          type: string
+          required: true
+          default: "free"
+        subscription_status:
+          type: string
+          default: "active"
+        billing_email:
+          type: string
+          required: true
+        settings:
+          type: json
+        usage_limits:
+          type: json
+        current_usage:
+          type: json
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      custom_logic:
+        file: "src/organization_extensions.rs"
+        dependencies:
+          - "serde_json = \"1.0\""
+          - "uuid = \"1.6\""
+          - "chrono = \"0.4\""
+        methods:
+          - "check_usage_limits"
+          - "upgrade_plan"
+          - "downgrade_plan"
+          - "calculate_billing"
+          - "generate_usage_report"
+          - "enforce_rate_limits"
+        hooks:
+          before_create: "validate_organization_data"
+          after_create: "setup_default_settings"
+          before_update: "validate_plan_change"
+          after_update: "sync_billing_system"
+      indexes:
+        - name: idx_org_slug
+          fields: [slug]
+          unique: true
+        - name: idx_org_plan
+          fields: [plan]
+
+    User:
+      table_name: users
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        organization_id:
+          type: uuid
+          required: true
+        email:
+          type: string
+          required: true
+          unique: true
+        password_hash:
+          type: string
+          required: true
+        role:
+          type: string
+          required: true
+          default: "member"
+        permissions:
+          type: json
+        last_activity:
+          type: datetime
+        is_active:
+          type: boolean
+          default: true
+        mfa_enabled:
+          type: boolean
+          default: false
+        mfa_secret:
+          type: string
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      relationships:
+        organization:
+          type: many_to_one
+          model: Organization
+          foreign_key: organization_id
+          on_delete: cascade
+      custom_logic:
+        file: "src/user_extensions.rs"
+        dependencies:
+          - "bcrypt = \"0.15\""
+          - "totp-rs = \"5.4\""
+          - "jsonwebtoken = \"9.0\""
+        methods:
+          - "setup_mfa"
+          - "verify_mfa_token"
+          - "check_permissions"
+          - "assume_role"
+          - "track_activity"
+          - "generate_api_key"
+        hooks:
+          before_create: "validate_user_limits"
+          after_create: "send_invitation"
+          before_update: "validate_role_change"
+          after_update: "audit_permission_change"
+
+    Dashboard:
+      table_name: dashboards
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        organization_id:
+          type: uuid
+          required: true
+        name:
+          type: string
+          required: true
+        description:
+          type: text
+        config:
+          type: json
+          required: true
+        is_public:
+          type: boolean
+          default: false
+        access_count:
+          type: integer
+          default: 0
+        last_accessed:
+          type: datetime
+        created_by:
+          type: uuid
+          required: true
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      relationships:
+        organization:
+          type: many_to_one
+          model: Organization
+          foreign_key: organization_id
+          on_delete: cascade
+        creator:
+          type: many_to_one
+          model: User
+          foreign_key: created_by
+          on_delete: restrict
+      custom_logic:
+        file: "src/dashboard_extensions.rs"
+        dependencies:
+          - "serde_json = \"1.0\""
+          - "async-trait = \"0.1\""
+        methods:
+          - "validate_config_schema"
+          - "render_dashboard"
+          - "export_dashboard"
+          - "clone_dashboard"
+          - "calculate_metrics"
+          - "optimize_queries"
+        hooks:
+          before_create: "validate_dashboard_config"
+          after_create: "initialize_widgets"
+          before_update: "backup_config"
+          after_update: "refresh_cache"
+
+    DataSource:
+      table_name: data_sources
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        organization_id:
+          type: uuid
+          required: true
+        name:
+          type: string
+          required: true
+        type:
+          type: string
+          required: true
+        connection_config:
+          type: json
+          required: true
+        is_active:
+          type: boolean
+          default: true
+        last_sync:
+          type: datetime
+        sync_status:
+          type: string
+          default: "pending"
+        error_message:
+          type: text
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      relationships:
+        organization:
+          type: many_to_one
+          model: Organization
+          foreign_key: organization_id
+          on_delete: cascade
+      custom_logic:
+        file: "src/datasource_extensions.rs"
+        dependencies:
+          - "sqlx = \"0.7\""
+          - "tokio = \"1.0\""
+          - "reqwest = \"0.12\""
+        methods:
+          - "test_connection"
+          - "sync_data"
+          - "execute_query"
+          - "validate_schema"
+          - "encrypt_credentials"
+          - "schedule_sync"
+        hooks:
+          before_create: "validate_connection_config"
+          after_create: "test_initial_connection"
+          before_update: "backup_connection_config"
+          after_update: "restart_sync_process"
+
+  endpoints:
+    - path: /auth
+      model: User
+      crud:
+        create: false
+        read_all: false
+        read_one: false
+        update: false
+        delete: false
+      custom_handlers:
+        file: "src/auth_handlers.rs"
+        dependencies:
+          - "jsonwebtoken = \"9.0\""
+          - "totp-rs = \"5.4\""
+        handlers:
+          - "login"
+          - "mfa_challenge"
+          - "verify_mfa"
+          - "logout"
+          - "refresh_token"
+          - "sso_login"
+        middleware:
+          - "rate_limit_auth"
+          - "tenant_isolation"
+
+    - path: /organizations
+      model: Organization
+      crud:
+        create: true
+        read_all: false
+        read_one: true
+        update: true
+        delete: false
+      auth:
+        type: jwt
+        required: true
+      custom_handlers:
+        file: "src/organization_handlers.rs"
+        handlers:
+          - "get_current_organization"
+          - "update_billing_plan"
+          - "get_usage_analytics"
+          - "export_data"
+        middleware:
+          - "admin_required"
+
+    - path: /dashboards
+      model: Dashboard
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+      auth:
+        type: jwt
+        required: true
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+      filters:
+        - field: name
+          type: contains
+        - field: is_public
+          type: exact
+        - field: created_by
+          type: exact
+      custom_handlers:
+        file: "src/dashboard_handlers.rs"
+        dependencies:
+          - "futures = \"0.3\""
+        handlers:
+          - "render_dashboard"
+          - "export_dashboard"
+          - "share_dashboard"
+          - "duplicate_dashboard"
+        middleware:
+          - "tenant_isolation"
+          - "usage_tracking"
+
+    - path: /data-sources
+      model: DataSource
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+      auth:
+        type: jwt
+        required: true
+      custom_handlers:
+        file: "src/datasource_handlers.rs"
+        handlers:
+          - "test_connection"
+          - "sync_now"
+          - "query_data"
+          - "get_schema"
+        middleware:
+          - "tenant_isolation"
+          - "data_access_control"
+
+frontend:
+  target: react
+  typescript_output_dir: "frontend/src/generated"
+  generate_ui_for: ["Organization", "User", "Dashboard", "DataSource"]
+  auto_generate_types: true
+  api_base_url: "http://localhost:3000/api/v2"
+  
+  components:
+    Organization:
+      generate: ["settings", "billing", "usage"]
+      form_fields: ["name", "billing_email", "plan"]
+      features: ["edit", "billing_management"]
+    
+    User:
+      generate: ["form", "list", "profile"]
+      form_fields: ["email", "role", "permissions"]
+      list_columns: ["email", "role", "last_activity", "is_active"]
+      features: ["create", "edit", "search", "mfa_setup"]
+    
+    Dashboard:
+      generate: ["builder", "viewer", "list"]
+      form_fields: ["name", "description", "is_public"]
+      list_columns: ["name", "access_count", "last_accessed", "created_at"]
+      features: ["create", "edit", "delete", "share", "export"]
+    
+    DataSource:
+      generate: ["form", "list", "connection_test"]
+      form_fields: ["name", "type", "connection_config"]
+      list_columns: ["name", "type", "sync_status", "last_sync"]
+      features: ["create", "edit", "delete", "test_connection", "sync"]
+  
+  framework_config:
+    react:
+      version: "18"
+      typescript: true
+      state_management: "zustand"
+      styling: "tailwind"
+      forms: "react-hook-form"
+      routing: "react-router"
+      build_tool: "vite"
+
+middleware:
+  - logger: true
+  
+  - cors:
+      allow_origin: "https://app.analytics-platform.com"
+      allow_methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+      allow_headers: ["Content-Type", "Authorization", "X-Tenant-ID"]
+      allow_credentials: true
+  
+  - rate_limit:
+      max_requests: 1000
+      window_seconds: 60
+      burst: 50
+  
+  - security:
+      helmet: true
+      content_security_policy: "default-src 'self'; script-src 'self' 'unsafe-inline'"
+
+components:
+  analytics-widgets: "github:saas-org/analytics-widgets@v3.2.1"
+  chart-library: "github:saas-org/charts@v2.0.0"

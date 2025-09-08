@@ -2,6 +2,29 @@ use thiserror::Error;
 use miette::Diagnostic;
 
 #[derive(Error, Debug, Diagnostic)]
+pub enum Error {
+    #[error("Configuration error")]
+    Config(#[from] ConfigError),
+    
+    #[error("Validation error: {0}")]
+    ValidationError(String),
+    
+    #[error("Component error: {0}")]
+    ComponentError(String),
+    
+    #[error("IO error")]
+    Io(#[from] std::io::Error),
+    
+    #[error("YAML parsing error")]
+    Yaml(#[from] serde_yaml::Error),
+    
+    #[error("JSON parsing error")]  
+    Json(#[from] serde_json::Error),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Error, Debug, Diagnostic)]
 pub enum ConfigError {
     #[error("YAML parsing error")]
     #[diagnostic(
@@ -147,5 +170,5 @@ pub enum ValidationError {
     CircularDependency { cycle: Vec<String> },
 }
 
-pub type ValidationResult<T> = Result<T, ValidationError>;
-pub type ConfigResult<T> = Result<T, ConfigError>;
+pub type ValidationResult<T> = std::result::Result<T, ValidationError>;
+pub type ConfigResult<T> = std::result::Result<T, ConfigError>;

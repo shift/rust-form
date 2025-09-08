@@ -63,10 +63,10 @@ impl GenerateCommand {
         // Generate the project
         info!("Generating project '{}' in: {}", config.project_name, output_dir.display());
         
-        let pipeline = rustform_codegen::GenerationPipeline::new()
+        let mut pipeline = rustform_codegen::GenerationPipeline::new()
             .map_err(|e| CliError::generation_error(format!("Failed to initialize pipeline: {}", e)))?;
         
-        let generated_project = pipeline.generate(&config, &output_dir)
+        let generated_project = pipeline.generate(&config, &output_dir).await
             .map_err(|e| CliError::generation_error(format!("Generation failed: {}", e)))?;
         
         // Create output directory

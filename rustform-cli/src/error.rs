@@ -71,6 +71,13 @@ pub enum CliError {
         help("Failed to initialize logging system")
     )]
     Logging(String),
+    
+    #[error("Component error: {0}")]
+    #[diagnostic(
+        code(rustform::component_error),
+        help("Check component URI and ensure it's accessible")
+    )]
+    ComponentError(String),
 }
 
 impl CliError {

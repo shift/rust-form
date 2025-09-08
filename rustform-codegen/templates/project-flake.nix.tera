@@ -1,0 +1,424 @@
+# Project-Level Flake Template with Component Integration
+{
+  description = "{{ project.name }} - Rust-form Generated Application with Component Integration";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    flake-utils.url = "github:numtide/flake-utils";
+    
+    # Auto-discovered component inputs
+    {% for component in enabled_components -%}
+    {{ component.name | replace("-", "_") }}.url = "path:./components/{{ component.category }}/{{ component.name }}";
+    {% endfor -%}
+  };
+
+  outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }@inputs:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
+
+        # Aggregate all component dependencies
+        componentInputs = [
+          {% for component in enabled_components -%}
+          inputs.{{ component.name | replace("-", "_") }}
+          {% endfor -%}
+        ];
+
+        # Merge build inputs from all components
+        allBuildInputs = pkgs.lib.flatten [
+          # Project-specific build inputs
+          (with pkgs; [
+            openssl
+            pkg-config
+            postgresql
+          ])
+          
+          # Component build inputs
+          {% for component in enabled_components -%}
+          (inputs.{{ component.name | replace("-", "_") }}.componentInfo.${system}.buildInputs or [])
+          {% endfor -%}
+        ];
+
+        # Merge native build inputs
+        allNativeBuildInputs = pkgs.lib.flatten [
+          # Core Rust toolchain
+          (with pkgs; [
+            rust-bin.stable.latest.default
+            cargo
+          ])
+          
+          # Component native build inputs  
+          {% for component in enabled_components -%}
+          (inputs.{{ component.name | replace("-", "_") }}.componentInfo.${system}.nativeBuildInputs or [])
+          {% endfor -%}
+        ];
+
+        # Merge development packages
+        allDevPackages = pkgs.lib.flatten [
+          # Core development tools
+          (with pkgs; [
+            rust-analyzer
+            cargo-watch
+            cargo-edit
+            cargo-audit
+            cargo-tarpaulin
+            sqlx-cli
+            diesel-cli
+          ])
+          
+          # Component development packages
+          {% for component in enabled_components -%}
+          (inputs.{{ component.name | replace("-", "_") }}.componentInfo.${system}.devShellPackages or [])
+          {% endfor -%}
+        ];
+
+        # Collect all Rust dependencies from components
+        allRustDependencies = pkgs.lib.flatten [
+          # Project-specific dependencies
+          [
+            "tokio = { version = \"1.0\", features = [\"full\"] }"
+            "axum = \"0.7\""
+            "serde = { version = \"1.0\", features = [\"derive\"] }"
+            "sqlx = { version = \"0.7\", features = [\"runtime-tokio-rustls\", \"postgres\"] }"
+          ]
+          
+          # Component dependencies
+          {% for component in enabled_components -%}
+          (inputs.{{ component.name | replace("-", "_") }}.componentInfo.${system}.rustDependencies or [])
+          {% endfor -%}
+        ];
+
+        # Component metadata for code generation
+        componentMetadata = builtins.listToAttrs (map (comp: {
+          name = comp.componentInfo.${system}.name;
+          value = comp.componentInfo.${system};
+        }) componentInputs);
+
+        # Main application package
+        rustformApp = pkgs.rustPlatform.buildRustPackage {
+          pname = "{{ project.name }}";
+          version = "{{ project.version }}";
+          src = ./.;
+          
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            allowBuiltinFetchGit = true;
+          };
+          
+          buildInputs = allBuildInputs;
+          nativeBuildInputs = allNativeBuildInputs;
+          
+          # Build-time environment variables for component integration
+          RUSTFORM_COMPONENTS = builtins.toJSON componentMetadata;
+          RUSTFORM_COMPONENT_COUNT = toString (builtins.length componentInputs);
+          
+          meta = with pkgs.lib; {
+            description = "{{ project.description }}";
+            license = licenses.mit;
+            maintainers = [ "{{ project.author }}" ];
+          };
+        };
+
+        # Frontend application (if enabled)
+        {% if frontend.enabled -%}
+        frontendApp = pkgs.buildNpmPackage {
+          pname = "{{ project.name }}-frontend";
+          version = "{{ project.version }}";
+          src = ./frontend;
+          
+          npmDepsHash = "{{ frontend.npm_deps_hash }}";
+          
+          buildInputs = with pkgs; [
+            nodejs_{{ frontend.node_version }}
+          ];
+          
+          buildPhase = ''
+            npm run build
+          '';
+          
+          installPhase = ''
+            mkdir -p $out
+            cp -r dist/* $out/
+          '';
+        };
+        {% endif -%}
+
+        # Database migration runner
+        dbMigrations = pkgs.writeShellScriptBin "run-migrations" ''
+          #!${pkgs.bash}/bin/bash
+          set -euo pipefail
+          
+          echo "🗃️  Running database migrations..."
+          
+          # Component-specific migrations
+          {% for component in enabled_components -%}
+          {% if component.migrations -%}
+          echo "Running {{ component.name }} migrations..."
+          sqlx migrate run --source components/{{ component.category }}/{{ component.name }}/migrations
+          {% endif -%}
+          {% endfor -%}
+          
+          # Project migrations
+          if [ -d "migrations" ]; then
+            echo "Running project migrations..."
+            sqlx migrate run
+          fi
+          
+          echo "✅ All migrations completed"
+        '';
+
+        # Development database setup
+        devDbSetup = pkgs.writeShellScriptBin "setup-dev-db" ''
+          #!${pkgs.bash}/bin/bash
+          set -euo pipefail
+          
+          echo "🐘 Setting up development database..."
+          
+          # Start PostgreSQL if not running
+          if ! pg_isready -q; then
+            echo "Starting PostgreSQL..."
+            pg_ctl start -D $PGDATA
+          fi
+          
+          # Create database if it doesn't exist
+          if ! psql -lqt | cut -d \| -f 1 | grep -qw {{ project.database.name }}; then
+            echo "Creating database {{ project.database.name }}..."
+            createdb {{ project.database.name }}
+          fi
+          
+          # Run migrations
+          run-migrations
+          
+          echo "✅ Development database ready"
+        '';
+
+        # Test runner with component tests
+        testRunner = pkgs.writeShellScriptBin "run-all-tests" ''
+          #!${pkgs.bash}/bin/bash
+          set -euo pipefail
+          
+          echo "🧪 Running all tests..."
+          
+          # Project tests
+          echo "Running project tests..."
+          cargo test --workspace
+          
+          # Component tests
+          {% for component in enabled_components -%}
+          echo "Running {{ component.name }} tests..."
+          (cd components/{{ component.category }}/{{ component.name }} && nix develop -c cargo test)
+          {% endfor -%}
+          
+          # Integration tests
+          echo "Running integration tests..."
+          cargo test --test '*'
+          
+          echo "✅ All tests passed"
+        '';
+
+        # Documentation builder
+        docBuilder = pkgs.writeShellScriptBin "build-docs" ''
+          #!${pkgs.bash}/bin/bash
+          set -euo pipefail
+          
+          echo "📚 Building documentation..."
+          
+          # Project documentation
+          cargo doc --workspace --no-deps
+          
+          # Component documentation
+          {% for component in enabled_components -%}
+          echo "Building {{ component.name }} docs..."
+          (cd components/{{ component.category }}/{{ component.name }} && nix build .#docs)
+          {% endfor -%}
+          
+          # Copy all docs to output directory
+          mkdir -p docs/output
+          cp -r target/doc docs/output/api
+          
+          {% for component in enabled_components -%}
+          cp -r components/{{ component.category }}/{{ component.name }}/result/* docs/output/{{ component.name }}/
+          {% endfor -%}
+          
+          echo "✅ Documentation built in docs/output/"
+        '';
+
+        # Development environment setup
+        devEnvSetup = pkgs.writeShellScriptBin "setup-dev-env" ''
+          #!${pkgs.bash}/bin/bash
+          set -euo pipefail
+          
+          echo "🛠️  Setting up development environment..."
+          
+          # Generate .env file with defaults
+          if [ ! -f ".env" ]; then
+            echo "Creating .env file..."
+            cat > .env << 'EOF'
+# Database configuration
+DATABASE_URL=postgresql://localhost/{{ project.database.name }}
+POSTGRES_DB={{ project.database.name }}
+POSTGRES_USER={{ project.database.user | default("postgres") }}
+POSTGRES_PASSWORD={{ project.database.password | default("password") }}
+
+# Server configuration  
+HOST={{ server.host | default("0.0.0.0") }}
+PORT={{ server.port | default("3000") }}
+
+# Component-specific environment variables
+{% for component in enabled_components -%}
+{% for var, value in component.environment -%}
+{{ var }}={{ value }}
+{% endfor -%}
+{% endfor -%}
+EOF
+          fi
+          
+          # Setup database
+          setup-dev-db
+          
+          # Install git hooks
+          if [ -d ".git" ]; then
+            echo "Installing git hooks..."
+            cp scripts/pre-commit .git/hooks/
+            chmod +x .git/hooks/pre-commit
+          fi
+          
+          echo "✅ Development environment ready!"
+          echo ""
+          echo "Next steps:"
+          echo "  cargo run                 - Start the application"
+          echo "  cargo watch -x run        - Start with auto-reload"
+          echo "  run-all-tests             - Run complete test suite"
+          echo "  build-docs                - Generate documentation"
+          echo ""
+        '';
+
+      in
+      {
+        # Packages
+        packages = {
+          default = rustformApp;
+          {% if frontend.enabled -%}
+          frontend = frontendApp;
+          {% endif -%}
+          migrations = dbMigrations;
+          tests = testRunner;
+          docs = docBuilder;
+        };
+
+        # Development shell
+        devShells.default = pkgs.mkShell {
+          buildInputs = allBuildInputs;
+          nativeBuildInputs = allNativeBuildInputs;
+          packages = allDevPackages ++ [
+            dbMigrations
+            devDbSetup
+            testRunner
+            docBuilder
+            devEnvSetup
+          ];
+          
+          # Environment variables
+          DATABASE_URL = "postgresql://localhost/{{ project.database.name }}";
+          RUST_LOG = "{{ project.log_level | default("info") }}";
+          
+          # Component environment variables
+          {% for component in enabled_components -%}
+          {% for var, value in component.environment -%}
+          {{ var }} = "{{ value }}";
+          {% endfor -%}
+          {% endfor -%}
+          
+          shellHook = ''
+            echo "🦀 {{ project.name | title }} Development Environment"
+            echo "📦 Rust-form Generated Application"
+            echo ""
+            echo "📊 Project Information:"
+            echo "  Name: {{ project.name }}"
+            echo "  Version: {{ project.version }}"
+            echo "  Components: {{ enabled_components | length }}"
+            echo "  Database: {{ project.database.name }}"
+            echo ""
+            echo "🧩 Enabled Components:"
+            {% for component in enabled_components -%}
+            echo "  ✓ {{ component.name }} ({{ component.category }})"
+            {% endfor -%}
+            echo ""
+            echo "🔧 Development Tools:"
+            echo "  setup-dev-env       - Initialize development environment"
+            echo "  setup-dev-db        - Setup development database"
+            echo "  run-migrations      - Run database migrations"
+            echo "  run-all-tests       - Execute complete test suite"
+            echo "  build-docs          - Generate documentation"
+            echo ""
+            echo "🚀 Quick Start:"
+            echo "  1. setup-dev-env    - First-time setup"
+            echo "  2. cargo run        - Start application"
+            echo "  3. Open http://localhost:{{ server.port | default("3000") }}"
+            echo ""
+            
+            # Check if first-time setup is needed
+            if [ ! -f ".env" ]; then
+              echo "⚠️  First-time setup required. Run: setup-dev-env"
+            else
+              echo "✅ Environment configured and ready!"
+            fi
+          '';
+        };
+
+        # CI/CD checks
+        checks = {
+          test = pkgs.runCommand "test-all" {
+            buildInputs = allBuildInputs;
+            nativeBuildInputs = allNativeBuildInputs;
+          } ''
+            cd ${./.}
+            cargo test --workspace
+            touch $out
+          '';
+          
+          format = pkgs.runCommand "check-format" {} ''
+            cd ${./.}
+            ${pkgs.rustfmt}/bin/cargo fmt --check
+            touch $out
+          '';
+          
+          clippy = pkgs.runCommand "check-clippy" {
+            buildInputs = allBuildInputs;
+            nativeBuildInputs = allNativeBuildInputs;
+          } ''
+            cd ${./.}
+            ${pkgs.clippy}/bin/cargo clippy --workspace -- -D warnings
+            touch $out
+          '';
+          
+          audit = pkgs.runCommand "security-audit" {} ''
+            cd ${./.}
+            ${pkgs.cargo-audit}/bin/cargo audit
+            touch $out
+          '';
+        };
+
+        # Applications
+        apps = {
+          default = flake-utils.lib.mkApp {
+            drv = rustformApp;
+          };
+          
+          migrate = flake-utils.lib.mkApp {
+            drv = dbMigrations;
+          };
+          
+          test = flake-utils.lib.mkApp {
+            drv = testRunner;
+          };
+        };
+
+        # Formatter for `nix fmt`
+        formatter = pkgs.nixfmt;
+      });
+}

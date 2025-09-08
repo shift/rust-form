@@ -1,0 +1,344 @@
+//! {{ component.name | title }} - {{ test_name | title }}
+//! 
+//! Unit tests for {{ component.description | lower }}
+
+use {{ component.name | replace("-", "_") }}::*;
+use tokio_test;
+use mockall::predicate::*;
+
+{% if mock_dependencies -%}
+// Import mock dependencies
+{% for mock in mock_dependencies -%}
+use super::mocks::{{ mock.name }};
+{% endfor -%}
+{% endif %}
+
+#[tokio::test]
+async fn {{ test_name | test_name }}() {
+    // Arrange
+    {% if component.category == "Auth" and test_name contains "token" -%}
+    let config = {{ component.name | replace("-", "") | title }}Config {
+        secret_key: "test_secret_key_12345".to_string(),
+        token_lifetime: std::time::Duration::from_secs(3600),
+        ..Default::default()
+    };
+    let component = {{ component.name | replace("-", "") | title }}::with_config(config);
+    
+    let test_claims = Claims {
+        sub: "user123".to_string(),
+        exp: (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp() as usize,
+        iat: chrono::Utc::now().timestamp() as usize,
+    };
+    {% elif component.category == "Database" and test_name contains "connection" -%}
+    let config = {{ component.name | replace("-", "") | title }}Config {
+        database_url: "sqlite::memory:".to_string(),
+        max_connections: 5,
+        ..Default::default()
+    };
+    let component = {{ component.name | replace("-", "") | title }}::with_config(config).await.unwrap();
+    {% elif component.category == "Api" and test_name contains "endpoint" -%}
+    let config = {{ component.name | replace("-", "") | title }}Config {
+        host: "127.0.0.1".to_string(),
+        port: 0, // Random available port
+        ..Default::default()
+    };
+    let component = {{ component.name | replace("-", "") | title }}::with_config(config);
+    {% else -%}
+    let component = {{ component.name | replace("-", "") | title }}::new();
+    {% endif -%}
+
+    // Act
+    {% if component.category == "Auth" and test_name contains "token" -%}
+    let result = component.create_token(&test_claims).await;
+    {% elif component.category == "Database" and test_name contains "connection" -%}
+    let result = component.test_connection().await;
+    {% elif component.category == "Api" and test_name contains "endpoint" -%}
+    let result = component.start().await;
+    {% else -%}
+    // Add test-specific action here
+    let result = component.process().await;
+    {% endif -%}
+
+    // Assert
+    {% if test_name contains "creation" or test_name contains "start" -%}
+    assert!(result.is_ok(), "{{ test_name | title }} should succeed: {:?}", result.err());
+    let value = result.unwrap();
+    assert!(!value.to_string().is_empty(), "{{ test_name | title }} should return non-empty result");
+    {% elif test_name contains "validation" -%}
+    assert!(result.is_ok(), "{{ test_name | title }} should succeed: {:?}", result.err());
+    let is_valid = result.unwrap();
+    assert!(is_valid, "{{ test_name | title }} should return true for valid input");
+    {% elif test_name contains "connection" -%}
+    assert!(result.is_ok(), "{{ test_name | title }} should succeed: {:?}", result.err());
+    {% else -%}
+    assert!(result.is_ok(), "{{ test_name | title }} should succeed: {:?}", result.err());
+    {% endif -%}
+}
+
+#[tokio::test]
+async fn {{ test_name | test_name }}_error_cases() {
+    // Test error scenarios
+    {% if component.category == "Auth" and test_name contains "token" -%}
+    // Test with invalid secret key
+    let config = {{ component.name | replace("-", "") | title }}Config {
+        secret_key: "".to_string(), // Invalid empty secret
+        ..Default::default()
+    };
+    
+    let result = {{ component.name | replace("-", "") | title }}::with_config(config);
+    assert!(result.is_err(), "Should fail with invalid secret key");
+    
+    // Test with expired token
+    let valid_config = {{ component.name | replace("-", "") | title }}Config {
+        secret_key: "test_secret_key_12345".to_string(),
+        token_lifetime: std::time::Duration::from_secs(0), // Immediate expiration
+        ..Default::default()
+    };
+    let component = {{ component.name | replace("-", "") | title }}::with_config(valid_config);
+    
+    let expired_claims = Claims {
+        sub: "user123".to_string(),
+        exp: (chrono::Utc::now() - chrono::Duration::hours(1)).timestamp() as usize, // Expired
+        iat: chrono::Utc::now().timestamp() as usize,
+    };
+    
+    let token_result = component.create_token(&expired_claims).await;
+    if let Ok(token) = token_result {
+        let validation_result = component.validate_token(&token).await;
+        assert!(validation_result.is_err(), "Should fail to validate expired token");
+    }
+    {% elif component.category == "Database" and test_name contains "connection" -%}
+    // Test with invalid database URL
+    let config = {{ component.name | replace("-", "") | title }}Config {
+        database_url: "invalid://database/url".to_string(),
+        ..Default::default()
+    };
+    
+    let result = {{ component.name | replace("-", "") | title }}::with_config(config).await;
+    assert!(result.is_err(), "Should fail with invalid database URL");
+    {% elif component.category == "Api" and test_name contains "endpoint" -%}
+    // Test with invalid configuration
+    let config = {{ component.name | replace("-", "") | title }}Config {
+        host: "256.256.256.256".to_string(), // Invalid IP
+        port: 99999, // Invalid port
+        ..Default::default()
+    };
+    
+    let component = {{ component.name | replace("-", "") | title }}::with_config(config);
+    let result = component.start().await;
+    assert!(result.is_err(), "Should fail with invalid host/port");
+    {% else -%}
+    // Test with invalid input
+    let component = {{ component.name | replace("-", "") | title }}::new();
+    
+    // Add test-specific error case
+    let result = component.process_invalid_input().await;
+    assert!(result.is_err(), "Should fail with invalid input");
+    {% endif -%}
+}
+
+{% if component.category == "Auth" and test_name contains "token" -%}
+#[tokio::test]
+async fn {{ test_name | test_name }}_token_algorithms() {
+    // Test different JWT algorithms
+    let algorithms = vec!["HS256", "HS384", "HS512"];
+    
+    for algorithm in algorithms {
+        let config = {{ component.name | replace("-", "") | title }}Config {
+            secret_key: "test_secret_key_12345".to_string(),
+            algorithm: algorithm.to_string(),
+            ..Default::default()
+        };
+        
+        let component = {{ component.name | replace("-", "") | title }}::with_config(config);
+        
+        let claims = Claims {
+            sub: "user123".to_string(),
+            exp: (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp() as usize,
+            iat: chrono::Utc::now().timestamp() as usize,
+        };
+        
+        let token_result = component.create_token(&claims).await;
+        assert!(token_result.is_ok(), "Token creation should succeed with {} algorithm", algorithm);
+        
+        let token = token_result.unwrap();
+        let validation_result = component.validate_token(&token).await;
+        assert!(validation_result.is_ok(), "Token validation should succeed with {} algorithm", algorithm);
+    }
+}
+{% endif -%}
+
+{% if mock_dependencies -%}
+#[tokio::test]
+async fn {{ test_name | test_name }}_with_mocks() {
+    // Test with mocked dependencies
+    {% for mock in mock_dependencies -%}
+    let mut {{ mock.name | snake_case }} = {{ mock.name }}::new();
+    
+    {% for method in mock.methods -%}
+    {{ mock.name | snake_case }}
+        .expect_{{ method }}()
+        .times(1)
+        .returning(|_| Ok(()));
+    {% endfor -%}
+    {% endfor -%}
+    
+    // Create component with mocked dependencies
+    let component = {{ component.name | replace("-", "") | title }}::with_dependencies(
+        {% for mock in mock_dependencies -%}
+        Box::new({{ mock.name | snake_case }}){% if not loop.last %},{% endif %}
+        {% endfor -%}
+    );
+    
+    // Test the component behavior
+    let result = component.process().await;
+    assert!(result.is_ok(), "Component should work with mocked dependencies");
+}
+{% endif -%}
+
+#[test]
+fn {{ test_name | test_name }}_config_validation() {
+    // Test configuration validation
+    {% if component.config_schema -%}
+    {% for field, config in component.config_schema -%}
+    {% if config.required -%}
+    // Test required field: {{ field }}
+    let mut config = {{ component.name | replace("-", "") | title }}Config::default();
+    config.{{ field }} = {{ config.field_type | rust_type | default_value }};
+    
+    let result = config.validate();
+    {% if config.required -%}
+    if config.{{ field }}.is_empty() {
+        assert!(result.is_err(), "Should fail validation with empty {{ field }}");
+    } else {
+        assert!(result.is_ok(), "Should pass validation with valid {{ field }}");
+    }
+    {% endif -%}
+    {% endif -%}
+    {% endfor -%}
+    {% endif -%}
+    
+    // Test default configuration
+    let default_config = {{ component.name | replace("-", "") | title }}Config::default();
+    assert!(default_config.validate().is_ok(), "Default configuration should be valid");
+}
+
+#[test]
+fn {{ test_name | test_name }}_serialization() {
+    // Test configuration serialization/deserialization
+    let config = {{ component.name | replace("-", "") | title }}Config::default();
+    
+    // Test JSON serialization
+    let json_result = serde_json::to_string(&config);
+    assert!(json_result.is_ok(), "Config should serialize to JSON");
+    
+    let json_str = json_result.unwrap();
+    let deserialized_result: Result<{{ component.name | replace("-", "") | title }}Config, _> = serde_json::from_str(&json_str);
+    assert!(deserialized_result.is_ok(), "Config should deserialize from JSON");
+    
+    // Test YAML serialization
+    let yaml_result = serde_yaml::to_string(&config);
+    assert!(yaml_result.is_ok(), "Config should serialize to YAML");
+    
+    let yaml_str = yaml_result.unwrap();
+    let yaml_deserialized_result: Result<{{ component.name | replace("-", "") | title }}Config, _> = serde_yaml::from_str(&yaml_str);
+    assert!(yaml_deserialized_result.is_ok(), "Config should deserialize from YAML");
+}
+
+// Property-based testing
+#[cfg(feature = "proptest")]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn {{ test_name | test_name }}_property_based(
+            {% if component.category == "Auth" and test_name contains "token" -%}
+            user_id in "[a-zA-Z0-9]{1,50}",
+            lifetime_secs in 1u64..86400u64
+            {% elif component.category == "Database" -%}
+            table_name in "[a-zA-Z][a-zA-Z0-9_]{1,30}",
+            max_connections in 1u32..100u32
+            {% else -%}
+            input_string in "[a-zA-Z0-9 ]{1,100}",
+            timeout_ms in 100u64..10000u64
+            {% endif -%}
+        ) {
+            {% if component.category == "Auth" and test_name contains "token" -%}
+            let config = {{ component.name | replace("-", "") | title }}Config {
+                secret_key: "test_secret_key_12345".to_string(),
+                token_lifetime: std::time::Duration::from_secs(lifetime_secs),
+                ..Default::default()
+            };
+            
+            let component = {{ component.name | replace("-", "") | title }}::with_config(config);
+            
+            let claims = Claims {
+                sub: user_id,
+                exp: (chrono::Utc::now() + chrono::Duration::seconds(lifetime_secs as i64)).timestamp() as usize,
+                iat: chrono::Utc::now().timestamp() as usize,
+            };
+            
+            // Property: Created tokens should always be valid when immediately validated
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let token_result = rt.block_on(component.create_token(&claims));
+            
+            if let Ok(token) = token_result {
+                let validation_result = rt.block_on(component.validate_token(&token));
+                prop_assert!(validation_result.is_ok(), "Valid token should always validate successfully");
+            }
+            {% elif component.category == "Database" -%}
+            let config = {{ component.name | replace("-", "") | title }}Config {
+                max_connections: max_connections,
+                ..Default::default()
+            };
+            
+            // Property: Configuration should be valid for reasonable values
+            prop_assert!(config.validate().is_ok(), "Configuration with reasonable values should be valid");
+            {% else -%}
+            let config = {{ component.name | replace("-", "") | title }}Config::default();
+            let component = {{ component.name | replace("-", "") | title }}::with_config(config);
+            
+            // Property: Component should handle any valid input without panicking
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(component.process_input(&input_string));
+            
+            // Should either succeed or fail gracefully, but never panic
+            prop_assert!(result.is_ok() || result.is_err(), "Component should handle input gracefully");
+            {% endif -%}
+        }
+    }
+}
+
+// Benchmark tests (when running with criterion)
+#[cfg(feature = "criterion")]
+mod benchmarks {
+    use super::*;
+    use criterion::{black_box, Criterion};
+
+    pub fn {{ test_name | test_name }}_benchmark(c: &mut Criterion) {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let component = {{ component.name | replace("-", "") | title }}::new();
+
+        c.bench_function("{{ test_name }}", |b| {
+            b.iter(|| {
+                {% if component.category == "Auth" and test_name contains "token" -%}
+                let claims = Claims {
+                    sub: "benchmark_user".to_string(),
+                    exp: (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp() as usize,
+                    iat: chrono::Utc::now().timestamp() as usize,
+                };
+                
+                rt.block_on(async {
+                    black_box(component.create_token(&claims).await)
+                })
+                {% else -%}
+                rt.block_on(async {
+                    black_box(component.process().await)
+                })
+                {% endif -%}
+            })
+        });
+    }
+}

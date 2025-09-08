@@ -16,7 +16,12 @@ impl GenerationPipeline {
         Ok(Self { engine })
     }
     
-    pub fn generate(&self, config: &Config, _output_dir: &Path) -> Result<GeneratedProject, CodeGenError> {
+    pub async fn generate(&mut self, config: &Config, _output_dir: &Path) -> Result<GeneratedProject, CodeGenError> {
+        // Install components if any are specified
+        if config.components.is_some() {
+            self.engine.install_components(config).await?;
+        }
+
         // Build generation context from config
         let gen_context = GenerationContext::from_config(config)?;
         
@@ -56,6 +61,16 @@ impl GenerationPipeline {
         // Generate frontend if configured
         if let Some(frontend_config) = &config.frontend {
             files.extend(self.generate_frontend(frontend_config, &gen_context, &context)?);
+        }
+
+        // Generate component lockfile if components were used
+        if config.components.is_some() {
+            let lockfile = self.engine.generate_lockfile(config).await?;
+            files.push(GeneratedFile {
+                path: "rustform.lock".to_string(),
+                content: serde_yaml::to_string(&lockfile)
+                    .map_err(|e| CodeGenError::Context(format!("Failed to serialize lockfile: {}", e)))?,
+            });
         }
         
         Ok(GeneratedProject {

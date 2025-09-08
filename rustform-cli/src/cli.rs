@@ -60,6 +60,13 @@ pub enum Commands {
         #[arg(value_parser = ["sqlite", "postgres", "mysql"])]
         database: String,
     },
+    
+    /// Manage components
+    #[command(alias = "comp")]
+    Component {
+        #[command(flatten)]
+        component: crate::commands::ComponentCommand,
+    },
 }
 
 impl Cli {

@@ -1,0 +1,44 @@
+<!-- Form wrapper component with validation styling -->
+<form 
+  {% if action %}action="{{ action }}"{% endif %}
+  {% if method %}method="{{ method }}"{% endif %}
+  class="
+    space-y-4
+    {% if style == 'card' %}
+      bg-white p-6 rounded-lg shadow-md border
+    {% elif style == 'minimal' %}
+      space-y-6
+    {% else %}
+      bg-gray-50 p-4 rounded border
+    {% endif %}
+    {{ class | default(value='') }}
+  "
+  {% if onsubmit %}onsubmit="{{ onsubmit }}"{% endif %}
+>
+  {% if title %}
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold text-gray-900">{{ title }}</h2>
+      {% if description %}
+        <p class="text-sm text-gray-600 mt-1">{{ description }}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+  
+  {{ content }}
+  
+  {% if show_submit %}
+    <div class="flex justify-end space-x-2 pt-4">
+      {% if show_cancel %}
+        <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+          Cancel
+        </button>
+      {% endif %}
+      <button 
+        type="submit" 
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+      >
+        {{ submit_text | default(value='Submit') }}
+      </button>
+    </div>
+  {% endif %}
+</form>
