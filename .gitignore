@@ -1,0 +1,45 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+Cargo.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Nix
+result
+result-*
+
+# Development
+.env
+.env.local
+*.log
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Generated projects (for testing)
+/generated/
+/examples/generated/
+
+# AI task system (keep structure, ignore temp files)
+ai/temp/
+ai/*.tmp

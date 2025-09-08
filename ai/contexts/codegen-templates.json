@@ -1,0 +1,58 @@
+{
+  "task_id": "codegen-templates", 
+  "dependencies": ["codegen-engine", "cli-config-parsing"],
+  "files_to_create": [
+    "templates/cargo_toml.tera",
+    "templates/main_rs.tera", 
+    "templates/models_rs.tera",
+    "templates/handlers_rs.tera",
+    "templates/error_rs.tera",
+    "templates/lib_rs.tera",
+    "templates/helpers/mod.tera",
+    "templates/helpers/crud.tera"
+  ],
+  "files_to_modify": [
+    "rustform-codegen/src/templates/mod.rs",
+    "rustform-codegen/src/context.rs"
+  ],
+  "template_context_data": [
+    "project_name",
+    "database_config", 
+    "models with fields and types",
+    "endpoints with CRUD operations",
+    "middleware configuration"
+  ],
+  "technologies": [
+    "Tera template inheritance",
+    "Template macros and includes",
+    "Conditional template rendering",
+    "Loop constructs for code generation"
+  ],
+  "environment_requirements": [
+    "Access to parsed configuration data",
+    "Template validation during build"
+  ],
+  "testing_requirements": [
+    "Generated Cargo.toml is valid",
+    "Generated main.rs compiles",
+    "Model structs have correct derives",
+    "Handler functions have proper signatures"
+  ],
+  "documentation_needs": [
+    "Template variable reference",
+    "Template inheritance patterns",
+    "Code generation examples"
+  ],
+  "potential_challenges": [
+    "Complex template logic for CRUD operations",
+    "Maintaining code formatting in templates",
+    "Template reusability and modularity",
+    "Type-safe template context passing"
+  ],
+  "success_metrics": [
+    "All templates render valid Rust code",
+    "Generated code follows rustfmt standards",
+    "Templates handle edge cases gracefully",
+    "Template maintenance is straightforward"
+  ]
+}

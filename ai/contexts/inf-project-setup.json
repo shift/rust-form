@@ -1,0 +1,58 @@
+{
+  "task_id": "inf-project-setup",
+  "dependencies": [],
+  "files_to_create": [
+    "Cargo.toml",
+    "rustform-cli/Cargo.toml",
+    "rustform-cli/src/main.rs",
+    "rustform-cli/src/lib.rs",
+    "rustform-codegen/Cargo.toml", 
+    "rustform-codegen/src/lib.rs",
+    "rustform-core/Cargo.toml",
+    "rustform-core/src/lib.rs",
+    "README.md",
+    ".gitignore"
+  ],
+  "files_to_modify": [],
+  "crates_to_add": [
+    "clap",
+    "serde",
+    "serde_yaml", 
+    "miette",
+    "tera",
+    "sqlx",
+    "axum",
+    "tokio",
+    "tracing",
+    "tracing-subscriber"
+  ],
+  "technologies": [
+    "Cargo workspaces",
+    "Rust crate organization",
+    "Dependency management"
+  ],
+  "environment_requirements": [
+    "Rust toolchain (latest stable)",
+    "Cargo package manager"
+  ],
+  "testing_requirements": [
+    "Workspace builds successfully",
+    "All crates compile without errors",
+    "Basic smoke tests for each crate"
+  ],
+  "documentation_needs": [
+    "Workspace structure explanation",
+    "Crate responsibilities overview",
+    "Basic usage instructions"
+  ],
+  "potential_challenges": [
+    "Proper workspace dependency management",
+    "Choosing appropriate crate boundaries",
+    "Version compatibility between dependencies"
+  ],
+  "success_metrics": [
+    "cargo build succeeds in workspace root",
+    "cargo test passes for all crates",
+    "Clear crate separation of concerns"
+  ]
+}

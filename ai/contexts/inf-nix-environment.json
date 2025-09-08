@@ -1,0 +1,54 @@
+{
+  "task_id": "inf-nix-environment",
+  "dependencies": ["inf-project-setup"],
+  "files_to_create": [
+    "flake.nix",
+    ".envrc",
+    "shell.nix (if needed for compatibility)"
+  ],
+  "files_to_modify": [
+    ".gitignore"
+  ],
+  "nix_packages": [
+    "rust-bin.stable.latest.default",
+    "sqlx-cli", 
+    "sqlite",
+    "cargo-watch",
+    "pkg-config",
+    "openssl"
+  ],
+  "technologies": [
+    "Nix flakes",
+    "Nix development shells",
+    "direnv integration",
+    "Rust overlay for Nix"
+  ],
+  "environment_requirements": [
+    "Nix package manager installed",
+    "Flakes enabled in Nix configuration",
+    "direnv installed (optional but recommended)"
+  ],
+  "testing_requirements": [
+    "nix develop successfully enters shell",
+    "Rust toolchain available in shell",
+    "SQLx CLI accessible",
+    "Environment variables properly set"
+  ],
+  "documentation_needs": [
+    "Nix setup instructions",
+    "Development environment guide",
+    "Tool availability reference"
+  ],
+  "potential_challenges": [
+    "Nix flake syntax and configuration",
+    "Cross-platform compatibility",
+    "Rust overlay integration",
+    "SQLx CLI version compatibility"
+  ],
+  "success_metrics": [
+    "Development shell activates without errors",
+    "All required tools accessible in PATH",
+    "DATABASE_URL environment variable set",
+    "direnv loads successfully"
+  ]
+}

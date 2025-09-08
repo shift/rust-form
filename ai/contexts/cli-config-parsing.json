@@ -1,0 +1,57 @@
+{
+  "task_id": "cli-config-parsing",
+  "dependencies": ["cli-foundation"],
+  "files_to_create": [
+    "rustform-core/src/config/mod.rs",
+    "rustform-core/src/config/schema.rs",
+    "rustform-core/src/config/validation.rs",
+    "rustform-core/src/config/types.rs",
+    "examples/basic-config.yml",
+    "examples/todo-config.yml"
+  ],
+  "files_to_modify": [
+    "rustform-core/src/lib.rs",
+    "rustform-core/Cargo.toml",
+    "rustform-cli/src/commands/generate.rs"
+  ],
+  "crates_to_add": [
+    "serde@1.0",
+    "serde_yaml@0.9",
+    "serde_derive@1.0",
+    "validator@0.16",
+    "indexmap@1.9"
+  ],
+  "technologies": [
+    "Serde for YAML parsing",
+    "Validator for field validation",
+    "IndexMap for preserving order",
+    "Custom derive macros"
+  ],
+  "environment_requirements": [
+    "Valid YAML test files",
+    "Example configurations"
+  ],
+  "testing_requirements": [
+    "Valid YAML configs parse correctly",
+    "Invalid configs produce helpful errors",
+    "Schema validation catches errors",
+    "Error messages point to specific lines"
+  ],
+  "documentation_needs": [
+    "YAML schema documentation",
+    "Configuration examples",
+    "Validation error guide"
+  ],
+  "potential_challenges": [
+    "YAML schema design complexity",
+    "Comprehensive validation rules",
+    "Error message quality and specificity",
+    "Handling nested configuration structures"
+  ],
+  "success_metrics": [
+    "Todo example config parses successfully",
+    "Schema validation prevents invalid configs",
+    "Error messages include line numbers",
+    "Configuration structs are well-typed"
+  ]
+}

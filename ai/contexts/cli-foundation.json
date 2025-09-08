@@ -1,0 +1,56 @@
+{
+  "task_id": "cli-foundation",
+  "dependencies": ["inf-project-setup"],
+  "files_to_create": [
+    "rustform-cli/src/cli.rs",
+    "rustform-cli/src/commands/mod.rs",
+    "rustform-cli/src/commands/generate.rs",
+    "rustform-cli/src/commands/init.rs",
+    "rustform-cli/src/error.rs"
+  ],
+  "files_to_modify": [
+    "rustform-cli/src/main.rs",
+    "rustform-cli/src/lib.rs",
+    "rustform-cli/Cargo.toml"
+  ],
+  "crates_to_add": [
+    "clap@4.0",
+    "miette@5.0", 
+    "thiserror@1.0",
+    "tracing@0.1",
+    "tracing-subscriber@0.3"
+  ],
+  "technologies": [
+    "Clap for CLI parsing",
+    "Miette for error reporting",
+    "Thiserror for error types",
+    "Tracing for logging"
+  ],
+  "environment_requirements": [
+    "Rust stable toolchain",
+    "Access to crates.io"
+  ],
+  "testing_requirements": [
+    "CLI help displays correctly",
+    "Commands parse without errors",
+    "Version information shows",
+    "Error messages are user-friendly"
+  ],
+  "documentation_needs": [
+    "CLI usage examples",
+    "Command reference",
+    "Error handling patterns"
+  ],
+  "potential_challenges": [
+    "Clap derive vs builder API choice",
+    "Error type hierarchy design", 
+    "Consistent error formatting",
+    "CLI UX design decisions"
+  ],
+  "success_metrics": [
+    "rustform --help works correctly",
+    "rustform --version shows version",
+    "Commands accept expected arguments",
+    "Error messages use miette formatting"
+  ]
+}

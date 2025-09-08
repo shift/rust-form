@@ -1,0 +1,314 @@
+{
+  "project": "rust-form",
+  "description": "Declarative, Type-Safe Web Backends in Rust - Task breakdown for MVP implementation",
+  "phases": [
+    {
+      "name": "Foundation",
+      "description": "Core project setup and infrastructure",
+      "tasks": ["inf-project-setup", "inf-nix-environment", "cli-foundation"]
+    },
+    {
+      "name": "Core Parsing",
+      "description": "Configuration parsing and template engine",
+      "tasks": ["cli-config-parsing", "codegen-engine"]
+    },
+    {
+      "name": "Template System", 
+      "description": "Code generation templates and database integration",
+      "tasks": ["codegen-templates", "db-sqlx-integration"]
+    },
+    {
+      "name": "Generation Pipeline",
+      "description": "Model and API generation pipeline",
+      "tasks": ["db-model-generation", "api-crud-generation", "api-router-setup"]
+    },
+    {
+      "name": "Integration",
+      "description": "Middleware, error handling, and complete pipeline",
+      "tasks": ["api-middleware", "api-error-handling", "codegen-pipeline"]
+    },
+    {
+      "name": "Quality Assurance",
+      "description": "Testing, CI/CD, and documentation",
+      "tasks": ["inf-ci-cd", "testing-framework", "documentation"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "inf-project-setup",
+      "title": "Project Structure Setup",
+      "phase": "Foundation",
+      "priority": "critical",
+      "complexity": "medium",
+      "estimated_effort": "4-6 hours",
+      "dependencies": [],
+      "description": "Initialize Cargo workspace with three crates: rustform-cli, rustform-codegen, and rustform-core",
+      "deliverables": [
+        "Cargo.toml workspace configuration",
+        "Basic crate structure for all three components",
+        "Initial dependencies setup",
+        "README.md with project overview"
+      ]
+    },
+    {
+      "id": "inf-nix-environment",
+      "title": "Nix Development Environment",
+      "phase": "Foundation", 
+      "priority": "high",
+      "complexity": "low",
+      "estimated_effort": "2-3 hours",
+      "dependencies": ["inf-project-setup"],
+      "description": "Setup Nix flake with development shell including Rust toolchain, SQLx CLI, and development tools",
+      "deliverables": [
+        "flake.nix with proper Rust toolchain",
+        ".envrc for direnv integration",
+        "Updated .gitignore for Nix and Rust",
+        "Development environment documentation"
+      ]
+    },
+    {
+      "id": "cli-foundation",
+      "title": "CLI Foundation with Clap",
+      "phase": "Foundation",
+      "priority": "critical", 
+      "complexity": "medium",
+      "estimated_effort": "3-4 hours",
+      "dependencies": ["inf-project-setup"],
+      "description": "Create basic CLI structure with clap for command parsing and miette for error reporting",
+      "deliverables": [
+        "CLI entry point with clap commands",
+        "Basic command structure (generate, init, etc.)",
+        "Error handling with miette",
+        "Help system and version information"
+      ]
+    },
+    {
+      "id": "cli-config-parsing",
+      "title": "YAML Configuration Parsing",
+      "phase": "Core Parsing",
+      "priority": "critical",
+      "complexity": "high", 
+      "estimated_effort": "6-8 hours",
+      "dependencies": ["cli-foundation"],
+      "description": "Define YAML schema and implement parsing with serde_yaml, including validation and error reporting",
+      "deliverables": [
+        "YAML schema definition structs",
+        "Configuration parsing with validation",
+        "Comprehensive error messages for invalid configs",
+        "Example config.yml files"
+      ]
+    },
+    {
+      "id": "codegen-engine",
+      "title": "Template Engine Setup",
+      "phase": "Core Parsing",
+      "priority": "critical",
+      "complexity": "medium",
+      "estimated_effort": "4-5 hours", 
+      "dependencies": ["cli-foundation"],
+      "description": "Setup Tera templating engine with basic template loading and rendering infrastructure",
+      "deliverables": [
+        "Tera engine configuration",
+        "Template loading system",
+        "Basic template helpers and filters",
+        "Template testing framework"
+      ]
+    },
+    {
+      "id": "codegen-templates",
+      "title": "Core Code Templates",
+      "phase": "Template System",
+      "priority": "critical",
+      "complexity": "high",
+      "estimated_effort": "8-10 hours",
+      "dependencies": ["codegen-engine", "cli-config-parsing"],
+      "description": "Create Tera templates for main.rs, Cargo.toml, models.rs, handlers.rs, and error.rs",
+      "deliverables": [
+        "main.rs template with Axum setup",
+        "Cargo.toml template with dependencies",
+        "models.rs template for struct generation", 
+        "handlers.rs template for CRUD operations",
+        "error.rs template for standardized errors"
+      ]
+    },
+    {
+      "id": "db-sqlx-integration",
+      "title": "SQLx Database Integration",
+      "phase": "Template System",
+      "priority": "critical",
+      "complexity": "medium",
+      "estimated_effort": "5-6 hours",
+      "dependencies": ["cli-config-parsing"],
+      "description": "Implement SQLx connection handling, migration system, and compile-time query validation",
+      "deliverables": [
+        "Database connection pool setup",
+        "Migration system integration",
+        "SQLx compile-time query validation",
+        "Database URL configuration handling"
+      ]
+    },
+    {
+      "id": "db-model-generation",
+      "title": "Database Model Generation",
+      "phase": "Generation Pipeline",
+      "priority": "critical",
+      "complexity": "high", 
+      "estimated_effort": "6-8 hours",
+      "dependencies": ["codegen-templates", "db-sqlx-integration"],
+      "description": "Generate Rust structs from YAML model definitions with Serde and SQLx derives",
+      "deliverables": [
+        "Model struct generation from YAML",
+        "Serde serialization derives",
+        "SQLx FromRow and Type derives",
+        "Field validation and constraints"
+      ]
+    },
+    {
+      "id": "api-crud-generation",
+      "title": "CRUD Handler Generation", 
+      "phase": "Generation Pipeline",
+      "priority": "critical",
+      "complexity": "high",
+      "estimated_effort": "8-10 hours",
+      "dependencies": ["db-model-generation"],
+      "description": "Generate complete CRUD handlers (Create, Read, Update, Delete) for models with proper error handling",
+      "deliverables": [
+        "Create operation handlers",
+        "Read (single and list) handlers", 
+        "Update operation handlers",
+        "Delete operation handlers",
+        "Input validation and sanitization"
+      ]
+    },
+    {
+      "id": "api-router-setup",
+      "title": "Axum Router Generation",
+      "phase": "Generation Pipeline", 
+      "priority": "critical",
+      "complexity": "medium",
+      "estimated_effort": "4-5 hours",
+      "dependencies": ["api-crud-generation"],
+      "description": "Generate Axum router configuration with proper route mounting and middleware integration",
+      "deliverables": [
+        "Router generation from endpoint config",
+        "Route path configuration",
+        "HTTP method handling",
+        "Middleware chain setup"
+      ]
+    },
+    {
+      "id": "api-middleware",
+      "title": "Middleware Integration",
+      "phase": "Integration",
+      "priority": "high",
+      "complexity": "medium",
+      "estimated_effort": "3-4 hours", 
+      "dependencies": ["api-router-setup"],
+      "description": "Implement configurable middleware including logging, CORS, and request tracing",
+      "deliverables": [
+        "Logging middleware configuration",
+        "CORS middleware setup",
+        "Request tracing integration",
+        "Middleware ordering and configuration"
+      ]
+    },
+    {
+      "id": "api-error-handling",
+      "title": "Standardized Error Handling",
+      "phase": "Integration",
+      "priority": "high", 
+      "complexity": "medium",
+      "estimated_effort": "4-5 hours",
+      "dependencies": ["api-router-setup"],
+      "description": "Implement comprehensive error handling with proper HTTP status codes and error responses",
+      "deliverables": [
+        "ApiError enum with HTTP conversion",
+        "Database error handling",
+        "Validation error responses", 
+        "Error logging and tracing"
+      ]
+    },
+    {
+      "id": "codegen-pipeline",
+      "title": "Complete Generation Pipeline",
+      "phase": "Integration",
+      "priority": "critical",
+      "complexity": "high",
+      "estimated_effort": "6-8 hours",
+      "dependencies": ["api-middleware", "api-error-handling"],
+      "description": "Integrate all components into a complete end-to-end generation pipeline with testing",
+      "deliverables": [
+        "Complete generate command implementation",
+        "File output and directory structure",
+        "Generated project compilation verification",
+        "Integration testing with example configs"
+      ]
+    },
+    {
+      "id": "inf-ci-cd",
+      "title": "CI/CD Pipeline Setup",
+      "phase": "Quality Assurance",
+      "priority": "medium",
+      "complexity": "medium", 
+      "estimated_effort": "4-5 hours",
+      "dependencies": ["inf-nix-environment"],
+      "description": "Setup GitHub Actions for testing, linting, and release automation",
+      "deliverables": [
+        "GitHub Actions workflow for testing",
+        "Rust clippy and fmt checks",
+        "Cross-platform build testing",
+        "Release automation setup"
+      ]
+    },
+    {
+      "id": "testing-framework",
+      "title": "Comprehensive Testing",
+      "phase": "Quality Assurance",
+      "priority": "high",
+      "complexity": "high",
+      "estimated_effort": "8-10 hours",
+      "dependencies": ["codegen-pipeline"],
+      "description": "Create comprehensive test suite including unit tests, integration tests, and end-to-end testing",
+      "deliverables": [
+        "Unit tests for all components",
+        "Integration tests for generation pipeline",
+        "End-to-end tests with example projects",
+        "Test coverage reporting"
+      ]
+    },
+    {
+      "id": "documentation",
+      "title": "Documentation and Examples",
+      "phase": "Quality Assurance", 
+      "priority": "medium",
+      "complexity": "medium",
+      "estimated_effort": "6-8 hours",
+      "dependencies": ["testing-framework"],
+      "description": "Create comprehensive documentation, tutorials, and example projects",
+      "deliverables": [
+        "API documentation with rustdoc",
+        "User guide and tutorials",
+        "Example configurations and projects",
+        "Contributing guidelines updates"
+      ]
+    }
+  ],
+  "success_criteria": [
+    "Successfully generate a working Todo API from YAML config",
+    "Generated project compiles and runs without errors",
+    "CRUD operations work correctly with SQLite",
+    "Generated code follows Rust best practices",
+    "Comprehensive test coverage (>80%)",
+    "Clear documentation and examples"
+  ],
+  "technical_requirements": [
+    "Rust 2021 edition with latest stable toolchain",
+    "SQLite database support",
+    "Axum web framework integration", 
+    "SQLx for database operations",
+    "Serde for serialization",
+    "Tera for templating",
+    "Clap for CLI interface",
+    "Miette for error reporting"
+  ]
+}

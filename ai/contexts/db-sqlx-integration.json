@@ -1,0 +1,62 @@
+{
+  "task_id": "db-sqlx-integration",
+  "dependencies": ["cli-config-parsing"],
+  "files_to_create": [
+    "rustform-core/src/database/mod.rs",
+    "rustform-core/src/database/connection.rs",
+    "rustform-core/src/database/migrations.rs",
+    "templates/database/mod_rs.tera",
+    "migrations/.gitkeep"
+  ],
+  "files_to_modify": [
+    "rustform-core/src/lib.rs",
+    "rustform-core/Cargo.toml"
+  ],
+  "crates_to_add": [
+    "sqlx@0.7",
+    "sqlx-sqlite@0.7", 
+    "tokio@1.0",
+    "uuid@1.0"
+  ],
+  "sqlx_features": [
+    "runtime-tokio-rustls",
+    "sqlite",
+    "chrono",
+    "uuid",
+    "migrate"
+  ],
+  "technologies": [
+    "SQLx compile-time checked queries",
+    "Database connection pooling",
+    "Migration system integration",
+    "Async database operations"
+  ],
+  "environment_requirements": [
+    "SQLite development libraries",
+    "Database URL configuration",
+    "Migration directory structure"
+  ],
+  "testing_requirements": [
+    "Database connections establish successfully",
+    "Connection pooling works correctly",
+    "Migration system integrates properly",
+    "Async operations function as expected"
+  ],
+  "documentation_needs": [
+    "Database setup instructions",
+    "Migration workflow guide",
+    "Connection configuration options"
+  ],
+  "potential_challenges": [
+    "SQLx compile-time verification setup",
+    "Database URL handling and validation",
+    "Migration file generation and management",
+    "Error handling for database operations"
+  ],
+  "success_metrics": [
+    "Database connections work in templates",
+    "SQLx queries compile successfully",
+    "Migration system is functional",
+    "Connection pooling is configured correctly"
+  ]
+}
