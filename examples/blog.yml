@@ -1,0 +1,73 @@
+project_name: blog_api
+version: "0.1.0"
+
+database:
+  type: sqlite
+  url_env: DATABASE_URL
+
+api:
+  models:
+    User:
+      table_name: users
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        username:
+          type: string
+          required: true
+        email:
+          type: string
+          required: true
+        created_at:
+          type: datetime
+          auto_now_add: true
+
+    Post:
+      table_name: posts
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        title:
+          type: string
+          required: true
+        content:
+          type: string
+          required: true
+        author_id:
+          type: uuid
+          required: true
+        published:
+          type: boolean
+          default: false
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+
+  endpoints:
+    - path: /users
+      model: User
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+
+    - path: /posts
+      model: Post  
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+
+middleware:
+  - logger: true
+  - cors:
+      allow_origin: "*"

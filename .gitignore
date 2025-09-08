@@ -35,6 +35,7 @@ result-*
 *.db
 *.db-shm
 *.db-wal
+rustform_dev.db*
 
 # Generated projects (for testing)
 /generated/
