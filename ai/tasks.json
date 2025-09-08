@@ -5,37 +5,65 @@
     {
       "name": "Foundation",
       "description": "Core project setup and infrastructure",
-      "tasks": ["inf-project-setup", "inf-nix-environment", "cli-foundation"]
+      "tasks": [
+        "inf-project-setup",
+        "inf-nix-environment",
+        "cli-foundation"
+      ]
     },
     {
       "name": "Core Parsing",
       "description": "Configuration parsing and template engine",
-      "tasks": ["cli-config-parsing", "codegen-engine"]
+      "tasks": [
+        "cli-config-parsing",
+        "codegen-engine"
+      ]
     },
     {
-      "name": "Template System", 
+      "name": "Template System",
       "description": "Code generation templates and database integration",
-      "tasks": ["codegen-templates", "db-sqlx-integration"]
+      "tasks": [
+        "codegen-templates",
+        "db-sqlx-integration"
+      ]
     },
     {
       "name": "Generation Pipeline",
       "description": "Model and API generation pipeline",
-      "tasks": ["db-model-generation", "api-crud-generation", "api-router-setup"]
+      "tasks": [
+        "db-model-generation",
+        "api-crud-generation",
+        "api-router-setup"
+      ]
     },
     {
       "name": "Integration",
       "description": "Middleware, error handling, and complete pipeline",
-      "tasks": ["api-middleware", "api-error-handling", "codegen-pipeline"]
+      "tasks": [
+        "api-middleware",
+        "api-error-handling",
+        "codegen-pipeline"
+      ]
     },
     {
       "name": "Quality Assurance",
       "description": "Testing, CI/CD, and documentation",
-      "tasks": ["inf-ci-cd", "testing-framework", "documentation"]
+      "tasks": [
+        "inf-ci-cd",
+        "testing-framework",
+        "documentation"
+      ]
     },
     {
       "name": "Enhancements",
       "description": "Advanced features and improvements beyond MVP",
-      "tasks": ["enhanced-crud-operations", "dynamic-route-registration", "validation-integration", "relationship-handling", "advanced-features"]
+      "tasks": [
+        "enhanced-crud-operations",
+        "dynamic-route-registration",
+        "validation-integration",
+        "relationship-handling",
+        "advanced-features"
+      ]
     }
   ],
   "tasks": [
@@ -46,6 +74,7 @@
       "priority": "critical",
       "complexity": "medium",
       "estimated_effort": "4-6 hours",
+      "status": "completed",
       "dependencies": [],
       "description": "Initialize Cargo workspace with three crates: rustform-cli, rustform-codegen, and rustform-core",
       "deliverables": [
@@ -58,50 +87,59 @@
     {
       "id": "inf-nix-environment",
       "title": "Nix Development Environment",
-      "phase": "Foundation", 
+      "phase": "Foundation",
       "priority": "high",
       "complexity": "low",
       "estimated_effort": "2-3 hours",
-      "dependencies": ["inf-project-setup"],
+      "dependencies": [
+        "inf-project-setup"
+      ],
       "description": "Setup Nix flake with development shell including Rust toolchain, SQLx CLI, and development tools",
       "deliverables": [
         "flake.nix with proper Rust toolchain",
         ".envrc for direnv integration",
         "Updated .gitignore for Nix and Rust",
         "Development environment documentation"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "cli-foundation",
       "title": "CLI Foundation with Clap",
       "phase": "Foundation",
-      "priority": "critical", 
+      "priority": "critical",
       "complexity": "medium",
       "estimated_effort": "3-4 hours",
-      "dependencies": ["inf-project-setup"],
+      "dependencies": [
+        "inf-project-setup"
+      ],
       "description": "Create basic CLI structure with clap for command parsing and miette for error reporting",
       "deliverables": [
         "CLI entry point with clap commands",
         "Basic command structure (generate, init, etc.)",
         "Error handling with miette",
         "Help system and version information"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "cli-config-parsing",
       "title": "YAML Configuration Parsing",
       "phase": "Core Parsing",
       "priority": "critical",
-      "complexity": "high", 
+      "complexity": "high",
       "estimated_effort": "6-8 hours",
-      "dependencies": ["cli-foundation"],
+      "dependencies": [
+        "cli-foundation"
+      ],
       "description": "Define YAML schema and implement parsing with serde_yaml, including validation and error reporting",
       "deliverables": [
         "YAML schema definition structs",
         "Configuration parsing with validation",
         "Comprehensive error messages for invalid configs",
         "Example config.yml files"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "codegen-engine",
@@ -109,15 +147,18 @@
       "phase": "Core Parsing",
       "priority": "critical",
       "complexity": "medium",
-      "estimated_effort": "4-5 hours", 
-      "dependencies": ["cli-foundation"],
+      "estimated_effort": "4-5 hours",
+      "dependencies": [
+        "cli-foundation"
+      ],
       "description": "Setup Tera templating engine with basic template loading and rendering infrastructure",
       "deliverables": [
         "Tera engine configuration",
         "Template loading system",
         "Basic template helpers and filters",
         "Template testing framework"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "codegen-templates",
@@ -126,15 +167,19 @@
       "priority": "critical",
       "complexity": "high",
       "estimated_effort": "8-10 hours",
-      "dependencies": ["codegen-engine", "cli-config-parsing"],
+      "dependencies": [
+        "codegen-engine",
+        "cli-config-parsing"
+      ],
       "description": "Create Tera templates for main.rs, Cargo.toml, models.rs, handlers.rs, and error.rs",
       "deliverables": [
         "main.rs template with Axum setup",
         "Cargo.toml template with dependencies",
-        "models.rs template for struct generation", 
+        "models.rs template for struct generation",
         "handlers.rs template for CRUD operations",
         "error.rs template for standardized errors"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "db-sqlx-integration",
@@ -143,63 +188,76 @@
       "priority": "critical",
       "complexity": "medium",
       "estimated_effort": "5-6 hours",
-      "dependencies": ["cli-config-parsing"],
+      "dependencies": [
+        "cli-config-parsing"
+      ],
       "description": "Implement SQLx connection handling, migration system, and compile-time query validation",
       "deliverables": [
         "Database connection pool setup",
         "Migration system integration",
         "SQLx compile-time query validation",
         "Database URL configuration handling"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "db-model-generation",
       "title": "Database Model Generation",
       "phase": "Generation Pipeline",
       "priority": "critical",
-      "complexity": "high", 
+      "complexity": "high",
       "estimated_effort": "6-8 hours",
-      "dependencies": ["codegen-templates", "db-sqlx-integration"],
+      "dependencies": [
+        "codegen-templates",
+        "db-sqlx-integration"
+      ],
       "description": "Generate Rust structs from YAML model definitions with Serde and SQLx derives",
       "deliverables": [
         "Model struct generation from YAML",
         "Serde serialization derives",
         "SQLx FromRow and Type derives",
         "Field validation and constraints"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "api-crud-generation",
-      "title": "CRUD Handler Generation", 
+      "title": "CRUD Handler Generation",
       "phase": "Generation Pipeline",
       "priority": "critical",
       "complexity": "high",
       "estimated_effort": "8-10 hours",
-      "dependencies": ["db-model-generation"],
+      "dependencies": [
+        "db-model-generation"
+      ],
       "description": "Generate complete CRUD handlers (Create, Read, Update, Delete) for models with proper error handling",
       "deliverables": [
         "Create operation handlers",
-        "Read (single and list) handlers", 
+        "Read (single and list) handlers",
         "Update operation handlers",
         "Delete operation handlers",
         "Input validation and sanitization"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "api-router-setup",
       "title": "Axum Router Generation",
-      "phase": "Generation Pipeline", 
+      "phase": "Generation Pipeline",
       "priority": "critical",
       "complexity": "medium",
       "estimated_effort": "4-5 hours",
-      "dependencies": ["api-crud-generation"],
+      "dependencies": [
+        "api-crud-generation"
+      ],
       "description": "Generate Axum router configuration with proper route mounting and middleware integration",
       "deliverables": [
         "Router generation from endpoint config",
         "Route path configuration",
         "HTTP method handling",
         "Middleware chain setup"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "api-middleware",
@@ -207,31 +265,37 @@
       "phase": "Integration",
       "priority": "high",
       "complexity": "medium",
-      "estimated_effort": "3-4 hours", 
-      "dependencies": ["api-router-setup"],
+      "estimated_effort": "3-4 hours",
+      "dependencies": [
+        "api-router-setup"
+      ],
       "description": "Implement configurable middleware including logging, CORS, and request tracing",
       "deliverables": [
         "Logging middleware configuration",
         "CORS middleware setup",
         "Request tracing integration",
         "Middleware ordering and configuration"
-      ]
+      ],
+      "status": "in_progress"
     },
     {
       "id": "api-error-handling",
       "title": "Standardized Error Handling",
       "phase": "Integration",
-      "priority": "high", 
+      "priority": "high",
       "complexity": "medium",
       "estimated_effort": "4-5 hours",
-      "dependencies": ["api-router-setup"],
+      "dependencies": [
+        "api-router-setup"
+      ],
       "description": "Implement comprehensive error handling with proper HTTP status codes and error responses",
       "deliverables": [
         "ApiError enum with HTTP conversion",
         "Database error handling",
-        "Validation error responses", 
+        "Validation error responses",
         "Error logging and tracing"
-      ]
+      ],
+      "status": "in_progress"
     },
     {
       "id": "codegen-pipeline",
@@ -240,30 +304,37 @@
       "priority": "critical",
       "complexity": "high",
       "estimated_effort": "6-8 hours",
-      "dependencies": ["api-middleware", "api-error-handling"],
+      "dependencies": [
+        "api-middleware",
+        "api-error-handling"
+      ],
       "description": "Integrate all components into a complete end-to-end generation pipeline with testing",
       "deliverables": [
         "Complete generate command implementation",
         "File output and directory structure",
         "Generated project compilation verification",
         "Integration testing with example configs"
-      ]
+      ],
+      "status": "completed"
     },
     {
       "id": "inf-ci-cd",
       "title": "CI/CD Pipeline Setup",
       "phase": "Quality Assurance",
       "priority": "medium",
-      "complexity": "medium", 
+      "complexity": "medium",
       "estimated_effort": "4-5 hours",
-      "dependencies": ["inf-nix-environment"],
+      "dependencies": [
+        "inf-nix-environment"
+      ],
       "description": "Setup GitHub Actions for testing, linting, and release automation",
       "deliverables": [
         "GitHub Actions workflow for testing",
         "Rust clippy and fmt checks",
         "Cross-platform build testing",
         "Release automation setup"
-      ]
+      ],
+      "status": "pending"
     },
     {
       "id": "testing-framework",
@@ -272,30 +343,36 @@
       "priority": "high",
       "complexity": "high",
       "estimated_effort": "8-10 hours",
-      "dependencies": ["codegen-pipeline"],
+      "dependencies": [
+        "codegen-pipeline"
+      ],
       "description": "Create comprehensive test suite including unit tests, integration tests, and end-to-end testing",
       "deliverables": [
         "Unit tests for all components",
         "Integration tests for generation pipeline",
         "End-to-end tests with example projects",
         "Test coverage reporting"
-      ]
+      ],
+      "status": "pending"
     },
     {
       "id": "documentation",
       "title": "Documentation and Examples",
-      "phase": "Quality Assurance", 
+      "phase": "Quality Assurance",
       "priority": "medium",
       "complexity": "medium",
       "estimated_effort": "6-8 hours",
-      "dependencies": ["testing-framework"],
+      "dependencies": [
+        "testing-framework"
+      ],
       "description": "Create comprehensive documentation, tutorials, and example projects",
       "deliverables": [
         "API documentation with rustdoc",
         "User guide and tutorials",
         "Example configurations and projects",
         "Contributing guidelines updates"
-      ]
+      ],
+      "status": "pending"
     },
     {
       "id": "enhanced-crud-operations",
@@ -304,7 +381,9 @@
       "priority": "medium",
       "complexity": "high",
       "estimated_effort": "8-10 hours",
-      "dependencies": ["codegen-pipeline"],
+      "dependencies": [
+        "codegen-pipeline"
+      ],
       "description": "Implement more sophisticated INSERT/UPDATE SQL generation with field validation and batch operations",
       "deliverables": [
         "Dynamic INSERT SQL with proper field mapping",
@@ -312,7 +391,8 @@
         "Batch operation support (bulk insert/update)",
         "Field-level validation in CRUD operations",
         "Optimized query generation"
-      ]
+      ],
+      "status": "pending"
     },
     {
       "id": "dynamic-route-registration",
@@ -321,7 +401,9 @@
       "priority": "medium",
       "complexity": "medium",
       "estimated_effort": "5-6 hours",
-      "dependencies": ["api-router-setup"],
+      "dependencies": [
+        "api-router-setup"
+      ],
       "description": "Implement dynamic route setup in main.rs based on endpoint configurations",
       "deliverables": [
         "Auto-generated route registration in main.rs",
@@ -329,16 +411,19 @@
         "Route grouping and prefixing support",
         "OpenAPI/Swagger route documentation generation",
         "Route middleware configuration per endpoint"
-      ]
+      ],
+      "status": "pending"
     },
     {
       "id": "validation-integration",
       "title": "Validation Integration",
       "phase": "Enhancements",
-      "priority": "medium", 
+      "priority": "medium",
       "complexity": "medium",
       "estimated_effort": "6-7 hours",
-      "dependencies": ["db-model-generation"],
+      "dependencies": [
+        "db-model-generation"
+      ],
       "description": "Add field validation to generated structs with custom validation rules",
       "deliverables": [
         "Integration with validator crate",
@@ -346,7 +431,8 @@
         "Validation error handling and responses",
         "Client-side validation hints generation",
         "Validation testing framework"
-      ]
+      ],
+      "status": "pending"
     },
     {
       "id": "relationship-handling",
@@ -355,7 +441,9 @@
       "priority": "high",
       "complexity": "high",
       "estimated_effort": "10-12 hours",
-      "dependencies": ["enhanced-crud-operations"],
+      "dependencies": [
+        "enhanced-crud-operations"
+      ],
       "description": "Implement foreign key relationships, joins, and nested object handling",
       "deliverables": [
         "Foreign key relationship definitions in YAML",
@@ -364,16 +452,20 @@
         "Cascade operations (delete, update)",
         "Relationship validation and constraints",
         "Many-to-many relationship support"
-      ]
+      ],
+      "status": "pending"
     },
     {
       "id": "advanced-features",
       "title": "Advanced Features",
       "phase": "Enhancements",
       "priority": "low",
-      "complexity": "high", 
+      "complexity": "high",
       "estimated_effort": "12-15 hours",
-      "dependencies": ["validation-integration", "relationship-handling"],
+      "dependencies": [
+        "validation-integration",
+        "relationship-handling"
+      ],
       "description": "Implement pagination, filtering, middleware configuration, and other advanced features",
       "deliverables": [
         "Pagination support with configurable page sizes",
@@ -384,12 +476,13 @@
         "Authentication and authorization framework",
         "Database connection pooling configuration",
         "Background job processing integration"
-      ]
+      ],
+      "status": "pending"
     }
   ],
   "success_criteria": [
     "Successfully generate a working Todo API from YAML config",
-    "Generated project compiles and runs without errors", 
+    "Generated project compiles and runs without errors",
     "CRUD operations work correctly with SQLite",
     "Generated code follows Rust best practices",
     "Comprehensive test coverage (>80%)",
@@ -402,7 +495,7 @@
   "technical_requirements": [
     "Rust 2021 edition with latest stable toolchain",
     "SQLite database support",
-    "Axum web framework integration", 
+    "Axum web framework integration",
     "SQLx for database operations",
     "Serde for serialization",
     "Tera for templating",
