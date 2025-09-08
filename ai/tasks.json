@@ -276,7 +276,7 @@
         "Request tracing integration",
         "Middleware ordering and configuration"
       ],
-      "status": "in_progress"
+      "status": "completed"
     },
     {
       "id": "api-error-handling",
@@ -295,7 +295,7 @@
         "Validation error responses",
         "Error logging and tracing"
       ],
-      "status": "in_progress"
+      "status": "completed"
     },
     {
       "id": "codegen-pipeline",
