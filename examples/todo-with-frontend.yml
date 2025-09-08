@@ -1,0 +1,110 @@
+project_name: todo_api
+version: "0.1.0"
+
+database:
+  type: sqlite
+  url_env: DATABASE_URL
+
+server:
+  host: "127.0.0.1"
+  port: 3000
+
+api:
+  models:
+    Todo:
+      table_name: todos
+      fields:
+        id:
+          type: integer
+          primary_key: true
+          auto_increment: true
+        title:
+          type: string
+          required: true
+          max_length: 200
+        description:
+          type: text
+        completed:
+          type: boolean
+          default: false
+        priority:
+          type: string
+          max_length: 10
+          default: "medium"
+        due_date:
+          type: datetime
+          nullable: true
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      
+      indexes:
+        - name: idx_todos_completed
+          fields: [completed]
+        - name: idx_todos_due_date
+          fields: [due_date]
+        - name: idx_todos_created_at
+          fields: [created_at]
+
+  endpoints:
+    - path: /todos
+      model: Todo
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        patch: true
+        delete: true
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+      filters:
+        - field: completed
+          type: exact
+        - field: priority
+          type: exact
+        - field: title
+          type: contains
+        - field: due_date
+          type: greaterthanorequal
+        - field: due_date
+          type: lessthanorequal
+
+frontend:
+  target: react
+  typescript_output_dir: "../frontend/src/generated"
+  generate_ui_for: ["Todo"]
+  auto_generate_types: true
+  api_base_url: "http://localhost:3000"
+  
+  components:
+    Todo:
+      generate: ["form", "list", "card"]
+      form_fields: ["title", "description", "priority", "due_date"]
+      list_columns: ["title", "priority", "completed", "due_date", "created_at"]
+      features: ["create", "edit", "delete", "search", "filter"]
+      pagination: true
+      search_fields: ["title", "description"]
+  
+  framework_config:
+    react:
+      version: "18"
+      typescript: true
+      state_management: "react-query"
+      styling: "tailwind"
+      forms: "react-hook-form"
+      routing: "react-router"
+      build_tool: "vite"
+
+middleware:
+  - logger: true
+  
+  - cors:
+      allow_origin: "*"
+      allow_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      allow_headers: ["Content-Type", "Authorization"]
+      allow_credentials: false

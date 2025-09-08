@@ -1,0 +1,204 @@
+// Generated React Query hooks for {{ project_name }}
+// This file is auto-generated. Do not edit manually.
+
+import { 
+  useQuery, 
+  useMutation, 
+  useQueryClient,
+  UseQueryOptions,
+  UseMutationOptions,
+  QueryKey,
+} from '@tanstack/react-query';
+import { 
+  {% for model in models -%}
+  {{ model.struct_name }}, 
+  Create{{ model.struct_name }}Request, 
+  Update{{ model.struct_name }}Request,
+  {{ model.struct_name }}Filters,
+  {% endfor -%}
+  PaginatedResponse,
+  ApiError,
+} from './types';
+import { apiClient } from './api-client';
+
+// Query key factories
+export const queryKeys = {
+  {% for model in models -%}
+  {{ model.name | lower }}: {
+    all: ['{{ model.name | lower }}s'] as const,
+    lists: () => [...queryKeys.{{ model.name | lower }}.all, 'list'] as const,
+    list: (filters: Partial<{{ model.struct_name }}Filters>) => [...queryKeys.{{ model.name | lower }}.lists(), filters] as const,
+    details: () => [...queryKeys.{{ model.name | lower }}.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.{{ model.name | lower }}.details(), id] as const,
+  },
+  {% endfor -%}
+};
+
+{% for model in models %}
+// {{ model.struct_name }} hooks
+export function use{{ model.struct_name }}s(
+  params?: { page?: number; per_page?: number; sort_by?: string; sort_order?: 'asc' | 'desc' },
+  options?: Omit<UseQueryOptions<PaginatedResponse<{{ model.struct_name }}>, ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: queryKeys.{{ model.name | lower }}.list(params || {}),
+    queryFn: () => apiClient.{{ model.name | lower }}.getAll(params),
+    ...options,
+  });
+}
+
+export function use{{ model.struct_name }}(
+  id: string,
+  options?: Omit<UseQueryOptions<{{ model.struct_name }}, ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: queryKeys.{{ model.name | lower }}.detail(id),
+    queryFn: () => apiClient.{{ model.name | lower }}.getById(id),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function useSearch{{ model.struct_name }}s(
+  filters: Partial<{{ model.struct_name }}Filters>,
+  options?: Omit<UseQueryOptions<PaginatedResponse<{{ model.struct_name }}>, ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: queryKeys.{{ model.name | lower }}.list(filters),
+    queryFn: () => apiClient.{{ model.name | lower }}.search(filters),
+    ...options,
+  });
+}
+
+export function useCreate{{ model.struct_name }}(
+  options?: UseMutationOptions<{{ model.struct_name }}, ApiError, Create{{ model.struct_name }}Request>
+) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: Create{{ model.struct_name }}Request) => apiClient.{{ model.name | lower }}.create(data),
+    onSuccess: (data) => {
+      // Invalidate and refetch {{ model.name | lower }} lists
+      queryClient.invalidateQueries({ queryKey: queryKeys.{{ model.name | lower }}.lists() });
+      // Add the new {{ model.name | lower }} to the cache
+      queryClient.setQueryData(queryKeys.{{ model.name | lower }}.detail(data.id), data);
+    },
+    ...options,
+  });
+}
+
+export function useUpdate{{ model.struct_name }}(
+  options?: UseMutationOptions<{{ model.struct_name }}, ApiError, { id: string; data: Update{{ model.struct_name }}Request }>
+) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, data }) => apiClient.{{ model.name | lower }}.update(id, data),
+    onSuccess: (data, variables) => {
+      // Update the {{ model.name | lower }} in the cache
+      queryClient.setQueryData(queryKeys.{{ model.name | lower }}.detail(variables.id), data);
+      // Invalidate lists to ensure consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.{{ model.name | lower }}.lists() });
+    },
+    ...options,
+  });
+}
+
+export function usePatch{{ model.struct_name }}(
+  options?: UseMutationOptions<{{ model.struct_name }}, ApiError, { id: string; data: Partial<Update{{ model.struct_name }}Request> }>
+) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, data }) => apiClient.{{ model.name | lower }}.patch(id, data),
+    onSuccess: (data, variables) => {
+      // Update the {{ model.name | lower }} in the cache
+      queryClient.setQueryData(queryKeys.{{ model.name | lower }}.detail(variables.id), data);
+      // Invalidate lists to ensure consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.{{ model.name | lower }}.lists() });
+    },
+    ...options,
+  });
+}
+
+export function useDelete{{ model.struct_name }}(
+  options?: UseMutationOptions<void, ApiError, string>
+) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id: string) => apiClient.{{ model.name | lower }}.delete(id),
+    onSuccess: (_, id) => {
+      // Remove the {{ model.name | lower }} from the cache
+      queryClient.removeQueries({ queryKey: queryKeys.{{ model.name | lower }}.detail(id) });
+      // Invalidate lists to ensure consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.{{ model.name | lower }}.lists() });
+    },
+    ...options,
+  });
+}
+
+{% endfor %}
+
+// Bulk operations and utilities
+export function useInvalidateQueries() {
+  const queryClient = useQueryClient();
+  
+  return {
+    {% for model in models -%}
+    {{ model.name | lower }}: {
+      all: () => queryClient.invalidateQueries({ queryKey: queryKeys.{{ model.name | lower }}.all }),
+      lists: () => queryClient.invalidateQueries({ queryKey: queryKeys.{{ model.name | lower }}.lists() }),
+      detail: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.{{ model.name | lower }}.detail(id) }),
+    },
+    {% endfor -%}
+  };
+}
+
+// Optimistic updates helper
+export function useOptimisticUpdate() {
+  const queryClient = useQueryClient();
+  
+  return {
+    {% for model in models -%}
+    {{ model.name | lower }}: {
+      update: (id: string, updater: (old: {{ model.struct_name }}) => {{ model.struct_name }}) => {
+        queryClient.setQueryData(
+          queryKeys.{{ model.name | lower }}.detail(id),
+          updater
+        );
+      },
+      create: (new{{ model.struct_name }}: {{ model.struct_name }}) => {
+        queryClient.setQueryData(
+          queryKeys.{{ model.name | lower }}.detail(new{{ model.struct_name }}.id),
+          new{{ model.struct_name }}
+        );
+      },
+    },
+    {% endfor -%}
+  };
+}
+
+// Prefetch utilities
+export function usePrefetch() {
+  const queryClient = useQueryClient();
+  
+  return {
+    {% for model in models -%}
+    {{ model.name | lower }}: {
+      list: (params?: { page?: number; per_page?: number; sort_by?: string; sort_order?: 'asc' | 'desc' }) => {
+        queryClient.prefetchQuery({
+          queryKey: queryKeys.{{ model.name | lower }}.list(params || {}),
+          queryFn: () => apiClient.{{ model.name | lower }}.getAll(params),
+        });
+      },
+      detail: (id: string) => {
+        queryClient.prefetchQuery({
+          queryKey: queryKeys.{{ model.name | lower }}.detail(id),
+          queryFn: () => apiClient.{{ model.name | lower }}.getById(id),
+        });
+      },
+    },
+    {% endfor -%}
+  };
+}

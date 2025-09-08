@@ -2,6 +2,7 @@ use crate::error::CodeGenError;
 use crate::templates::templates_dir::get_templates;
 use tera::{Tera, Context, Value, Result as TeraResult};
 use std::collections::HashMap;
+use include_dir::Dir;
 
 pub struct TemplateEngine {
     tera: Tera,
@@ -13,16 +14,26 @@ impl TemplateEngine {
         
         // Load templates from embedded directory
         let templates_dir = get_templates();
-        for file in templates_dir.files() {
-            if let Some(path) = file.path().to_str() {
-                if path.ends_with(".tera") {
-                    let content = file.contents_utf8()
-                        .ok_or_else(|| CodeGenError::Template(format!("Template {} is not valid UTF-8", path)))?;
-                    tera.add_raw_template(path, content)
-                        .map_err(|e| CodeGenError::Template(format!("Failed to add template '{}': {}", path, e)))?;
+        fn load_templates_recursive(tera: &mut Tera, dir: &Dir) -> Result<(), CodeGenError> {
+            for file in dir.files() {
+                if let Some(path) = file.path().to_str() {
+                    if path.ends_with(".tera") {
+                        let content = file.contents_utf8()
+                            .ok_or_else(|| CodeGenError::Template(format!("Template {} is not valid UTF-8", path)))?;
+                        tera.add_raw_template(path, content)
+                            .map_err(|e| CodeGenError::Template(format!("Failed to add template '{}': {}", path, e)))?;
+                    }
                 }
             }
+            
+            for subdir in dir.dirs() {
+                load_templates_recursive(tera, subdir)?;
+            }
+            
+            Ok(())
         }
+        
+        load_templates_recursive(&mut tera, templates_dir)?;
         
         // Register custom filters
         tera.register_filter("snake_case", snake_case_filter);
@@ -33,6 +44,7 @@ impl TemplateEngine {
         tera.register_filter("sql_type", sql_type_filter);
         tera.register_filter("default_value", default_value_filter);
         tera.register_filter("quote", quote_filter);
+        tera.register_filter("ts_type", ts_type_filter);
         
         // Register custom functions
         tera.register_function("generate_id", generate_id_function);
@@ -167,6 +179,27 @@ fn default_value_filter(value: &Value, args: &HashMap<String, Value>) -> TeraRes
 fn quote_filter(value: &Value, _: &HashMap<String, Value>) -> TeraResult<Value> {
     let s = value.as_str().ok_or_else(|| tera::Error::msg("Value is not a string"))?;
     Ok(Value::String(format!("\"{}\"", s.replace("\"", "\\\""))))
+}
+
+fn ts_type_filter(value: &Value, _: &HashMap<String, Value>) -> TeraResult<Value> {
+    let field_type = value.as_str().ok_or_else(|| tera::Error::msg("Value is not a string"))?;
+    let ts_type = match field_type {
+        "integer" => "number",
+        "string" => "string",
+        "boolean" => "boolean",
+        "datetime" => "string", // ISO 8601 string
+        "date" => "string",     // ISO 8601 date string
+        "time" => "string",     // ISO 8601 time string
+        "uuid" => "string",     // UUID as string
+        "json" => "any",        // JSON as any type
+        "text" => "string",
+        "float" => "number",
+        "double" => "number",
+        "decimal" => "number",
+        "binary" => "string",   // Base64 encoded string
+        _ => "string",          // fallback
+    };
+    Ok(Value::String(ts_type.to_string()))
 }
 
 // Custom functions

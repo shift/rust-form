@@ -11,6 +11,8 @@ pub struct Config {
     pub middleware: Vec<MiddlewareConfig>,
     #[serde(default)]
     pub server: ServerConfig,
+    #[serde(default)]
+    pub frontend: Option<FrontendConfig>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -345,4 +347,101 @@ pub struct SecurityConfig {
     pub content_security_policy: Option<String>,
     #[serde(default)]
     pub x_frame_options: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct FrontendConfig {
+    pub target: String,
+    pub typescript_output_dir: String,
+    pub generate_ui_for: Vec<String>,
+    #[serde(default)]
+    pub auto_generate_types: bool,
+    #[serde(default)]
+    pub api_base_url: Option<String>,
+    #[serde(default)]
+    pub components: IndexMap<String, ComponentConfig>,
+    #[serde(default)]
+    pub framework_config: Option<FrameworkConfig>,
+    #[serde(default)]
+    pub export: Option<ExportConfig>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ComponentConfig {
+    #[serde(default)]
+    pub generate: Vec<String>,
+    #[serde(default)]
+    pub form_fields: Vec<String>,
+    #[serde(default)]
+    pub list_columns: Vec<String>,
+    #[serde(default)]
+    pub features: Vec<String>,
+    #[serde(default)]
+    pub pagination: bool,
+    #[serde(default)]
+    pub search_fields: Vec<String>,
+    #[serde(default)]
+    pub relationships: IndexMap<String, RelationshipDisplayConfig>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct RelationshipDisplayConfig {
+    pub display_field: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct FrameworkConfig {
+    #[serde(default)]
+    pub react: Option<ReactConfig>,
+    #[serde(default)]
+    pub vue: Option<VueConfig>,
+    #[serde(default)]
+    pub svelte: Option<SvelteConfig>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ReactConfig {
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub typescript: bool,
+    #[serde(default)]
+    pub state_management: Option<String>,
+    #[serde(default)]
+    pub styling: Option<String>,
+    #[serde(default)]
+    pub forms: Option<String>,
+    #[serde(default)]
+    pub routing: Option<String>,
+    #[serde(default)]
+    pub build_tool: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct VueConfig {
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub typescript: bool,
+    #[serde(default)]
+    pub state_management: Option<String>,
+    #[serde(default)]
+    pub styling: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct SvelteConfig {
+    #[serde(default)]
+    pub kit: bool,
+    #[serde(default)]
+    pub typescript: bool,
+    #[serde(default)]
+    pub styling: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ExportConfig {
+    pub package_name: String,
+    pub version: String,
+    pub components: Vec<String>,
 }

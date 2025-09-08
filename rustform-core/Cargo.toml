@@ -37,3 +37,6 @@ anyhow.workspace = true
 # Utilities
 tracing.workspace = true
 regex.workspace = true
+
+# TypeScript generation
+ts-rs = "7.1"

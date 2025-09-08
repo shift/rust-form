@@ -1,0 +1,63 @@
+// Generated TypeScript types for {{ project_name }}
+// This file is auto-generated. Do not edit manually.
+
+{% for model in models %}
+// {{ model.name }} type definitions
+export interface {{ model.struct_name }} {
+  {% for field in model.fields -%}
+  {{ field.name }}: {{ field.field_type | ts_type }}{% if field.is_nullable %} | null{% endif %};
+  {% endfor %}
+}
+
+export interface Create{{ model.struct_name }}Request {
+  {% for field in model.fields -%}
+  {% if not field.is_primary_key and not field.auto_increment and not field.auto_now and not field.auto_now_add -%}
+  {{ field.name }}{% if field.is_nullable or not field.is_required %}?{% endif %}: {{ field.field_type | ts_type }}{% if field.is_nullable %} | null{% endif %};
+  {% endif -%}
+  {% endfor %}
+}
+
+export interface Update{{ model.struct_name }}Request {
+  {% for field in model.fields -%}
+  {% if not field.is_primary_key and not field.auto_increment and not field.auto_now and not field.auto_now_add -%}
+  {{ field.name }}?: {{ field.field_type | ts_type }}{% if field.is_nullable %} | null{% endif %};
+  {% endif -%}
+  {% endfor %}
+}
+
+{% endfor %}
+
+// API Response types
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+export interface ApiError {
+  error: string;
+  message: string;
+  status: number;
+}
+
+// Common utility types
+export type ID = string;
+export type Timestamp = string;
+
+// Filter types for API queries
+{% for model in models %}
+export interface {{ model.struct_name }}Filters {
+  {% for field in model.fields -%}
+  {{ field.name }}?: {{ field.field_type | ts_type }}{% if field.is_nullable %} | null{% endif %};
+  {% endfor %}
+  // Pagination
+  page?: number;
+  per_page?: number;
+  // Sorting
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+{% endfor %}
