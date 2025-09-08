@@ -1,0 +1,198 @@
+name: "opentelemetry-integration"
+description: "Complete OpenTelemetry tracing and metrics integration with auto-instrumentation"
+version: "1.0.0"
+category: "observability"
+subcategory: "tracing"
+priority: "high"
+complexity: "medium"
+
+files:
+  - "observability/opentelemetry_setup.rs"
+  - "observability/tracing_layers.rs"
+  - "observability/custom_spans.rs"
+  - "observability/metrics_integration.rs"
+  - "middleware/tracing_middleware.rs"
+  - "utils/trace_utils.rs"
+
+# API compatibility with rust-form framework
+api_compatibility:
+  api_version: "0.1.0"
+  min_version: "0.1.0"
+  max_version: "0.2.0"
+  required_features:
+    - "observability-framework"
+    - "tracing-integration"
+    - "metrics-collection"
+  experimental: false
+
+dependencies:
+  rust:
+    - "opentelemetry = \"0.21\""
+    - "opentelemetry-otlp = \"0.14\""
+    - "opentelemetry-jaeger = \"0.20\""
+    - "opentelemetry_sdk = \"0.21\""
+    - "opentelemetry-prometheus = \"0.14\""
+    - "opentelemetry-semantic-conventions = \"0.13\""
+    - "tracing-opentelemetry = \"0.22\""
+    - "tracing = \"0.1\""
+    - "tracing-subscriber = { version = \"0.3\", features = [\"env-filter\", \"json\"] }"
+    - "serde = { version = \"1.0\", features = [\"derive\"] }"
+    - "tokio = { version = \"1.0\", features = [\"macros\", \"rt-multi-thread\"] }"
+    - "uuid = { version = \"1.0\", features = [\"v4\"] }"
+  nix:
+    buildInputs:
+      - "openssl"
+      - "pkg-config"
+    nativeBuildInputs:
+      - "rustc"
+      - "cargo"
+
+templates:
+  generates:
+    - "observability/opentelemetry_setup.rs"
+    - "observability/tracing_layers.rs"
+    - "observability/custom_spans.rs"
+    - "observability/metrics_integration.rs"
+    - "middleware/tracing_middleware.rs"
+    - "utils/trace_utils.rs"
+  requires:
+    - "error.rs"
+    - "config.rs"
+
+config_schema:
+  service_name:
+    type: "string"
+    required: true
+    description: "Service name for OpenTelemetry identification"
+  service_version:
+    type: "string"
+    default: "1.0.0"
+    description: "Service version for telemetry"
+  tracing_enabled:
+    type: "boolean"
+    default: true
+    description: "Enable distributed tracing"
+  metrics_enabled:
+    type: "boolean"
+    default: true
+    description: "Enable OpenTelemetry metrics"
+  sample_rate:
+    type: "float"
+    default: 1.0
+    description: "Trace sampling rate (0.0 to 1.0)"
+  max_events_per_span:
+    type: "integer"
+    default: 128
+    description: "Maximum events per span"
+  max_attributes_per_span:
+    type: "integer"
+    default: 128
+    description: "Maximum attributes per span"
+  export_timeout:
+    type: "duration"
+    default: "30s"
+    description: "Timeout for exporting traces"
+  export_batch_size:
+    type: "integer"
+    default: 512
+    description: "Batch size for trace exports"
+  otlp_endpoint:
+    type: "string"
+    default: "http://localhost:4317"
+    description: "OTLP collector endpoint"
+  jaeger_endpoint:
+    type: "string"
+    default: "http://localhost:14268/api/traces"
+    description: "Jaeger collector endpoint"
+  console_exporter:
+    type: "boolean"
+    default: false
+    description: "Enable console exporter for development"
+  resource_attributes:
+    type: "object"
+    description: "Additional resource attributes"
+
+# OpenTelemetry specific configuration
+opentelemetry:
+  spec_version: "1.24.0"
+  supported_exporters: ["otlp", "jaeger", "zipkin", "console"]
+  supported_protocols: ["grpc", "http/protobuf", "http/json"]
+  semantic_conventions: "1.21.0"
+  
+  # Auto-instrumentation features
+  auto_instrumentation:
+    http_requests: true
+    database_queries: true
+    external_calls: true
+    async_tasks: true
+    custom_business_logic: true
+  
+  # Baggage and context propagation
+  propagation:
+    trace_context: true
+    baggage: true
+    jaeger: false
+    zipkin: false
+  
+  # Resource detection
+  resource_detection:
+    process: true
+    host: true
+    container: true
+    kubernetes: true
+    cloud: true
+
+tests:
+  unit:
+    - "test_tracer_initialization"
+    - "test_span_creation"
+    - "test_custom_attributes"
+    - "test_error_recording"
+    - "test_metrics_collection"
+  integration:
+    - "test_distributed_tracing"
+    - "test_exporter_connectivity"
+    - "test_sampling_configuration"
+    - "test_resource_attributes"
+  performance:
+    - "test_high_throughput_tracing"
+    - "test_memory_usage"
+    - "test_export_performance"
+
+documentation:
+  setup_guide: true
+  tracing_examples: true
+  custom_instrumentation: true
+  troubleshooting: true
+  performance_tuning: true
+
+features:
+  automatic_instrumentation:
+    - "http_server_spans"
+    - "http_client_spans"
+    - "database_spans"
+    - "custom_business_spans"
+  
+  distributed_tracing:
+    - "trace_context_propagation"
+    - "baggage_propagation"
+    - "cross_service_correlation"
+    - "trace_sampling"
+  
+  metrics_collection:
+    - "counter_metrics"
+    - "gauge_metrics"
+    - "histogram_metrics"
+    - "custom_metrics"
+  
+  exporters:
+    - "otlp_grpc"
+    - "otlp_http"
+    - "jaeger_thrift"
+    - "console_debug"
+  
+  context_management:
+    - "span_context"
+    - "active_span"
+    - "span_nesting"
+    - "async_context"

@@ -263,3 +263,45 @@ tests:
         assert!(result.unwrap().is_empty());
     }
 }
+
+#[rstest]
+fn test_gdpr_component_parsing() {
+    let gdpr_content = std::fs::read_to_string("./components/backend/compliance/gdpr-data-subject-rights/component.yml")
+        .expect("Failed to read GDPR component.yml");
+    
+    println!("📁 Attempting to parse GDPR component...");
+    
+    match ComponentManifest::from_yaml(&gdpr_content) {
+        Ok(manifest) => {
+            println!("✅ Successfully parsed GDPR component!");
+            assert_eq!(manifest.name, "gdpr-data-subject-rights");
+            assert_eq!(manifest.version, "1.0.0");
+            assert_eq!(manifest.category.as_deref(), Some("compliance"));
+            assert_eq!(manifest.subcategory.as_deref(), Some("gdpr"));
+            assert_eq!(manifest.priority.as_deref(), Some("critical"));
+            assert_eq!(manifest.complexity.as_deref(), Some("high"));
+            
+            // Check dependencies parsing
+            assert!(!manifest.dependencies.rust.is_empty());
+            println!("   ✅ Rust dependencies: {}", manifest.dependencies.rust.len());
+            
+            // Check templates
+            if let Some(ref templates) = manifest.templates {
+                if let Some(ref generates) = templates.generates {
+                    assert!(!generates.is_empty());
+                    println!("   ✅ Templates: {}", generates.len());
+                }
+            }
+            
+            // Check compliance section
+            if let Some(ref compliance) = manifest.compliance {
+                assert_eq!(compliance.regulation.as_deref(), Some("GDPR"));
+                println!("   ✅ Compliance regulation: {:?}", compliance.regulation);
+            }
+        }
+        Err(e) => {
+            println!("❌ Failed to parse GDPR component: {}", e);
+            panic!("GDPR component parsing failed: {}", e);
+        }
+    }
+}

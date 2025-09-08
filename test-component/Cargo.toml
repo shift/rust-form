@@ -1,0 +1,21 @@
+[package]
+name = "test-component"
+version = "1.0.0"
+edition = "2021"
+description = "Test component for API compatibility demonstration"
+authors = ["Rust-Form Team"]
+license = "MIT"
+
+# Make this a standalone package, not part of the workspace
+[workspace]
+
+[lib]
+name = "test_component"
+path = "src/lib_test.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+
+[dev-dependencies]
+tokio-test = "0.4"

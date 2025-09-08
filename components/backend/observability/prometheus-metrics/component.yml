@@ -1,0 +1,178 @@
+name: "prometheus-metrics"
+description: "Prometheus metrics endpoint with token authentication and rate limiting"
+version: "1.0.0"
+category: "observability"
+subcategory: "metrics"
+priority: "high"
+complexity: "medium"
+
+files:
+  - "observability/prometheus_metrics.rs"
+  - "observability/metrics_auth.rs"
+  - "observability/metrics_registry.rs"
+  - "observability/custom_metrics.rs"
+  - "middleware/metrics_middleware.rs"
+  - "handlers/metrics_handler.rs"
+  - "utils/token_manager.rs"
+
+# API compatibility with rust-form framework
+api_compatibility:
+  api_version: "0.1.0"
+  min_version: "0.1.0"
+  max_version: "0.2.0"
+  required_features:
+    - "observability-framework"
+    - "metrics-collection"
+    - "authentication"
+  experimental: false
+
+dependencies:
+  rust:
+    - "prometheus = \"0.13\""
+    - "axum = { version = \"0.7\", features = [\"json\"] }"
+    - "tower = { version = \"0.4\", features = [\"timeout\", \"rate\"] }"
+    - "tower-http = { version = \"0.5\", features = [\"auth\", \"cors\"] }"
+    - "tokio = { version = \"1.0\", features = [\"full\"] }"
+    - "serde = { version = \"1.0\", features = [\"derive\"] }"
+    - "jsonwebtoken = \"9.0\""
+    - "sha2 = \"0.10\""
+    - "base64 = \"0.21\""
+    - "uuid = { version = \"1.0\", features = [\"v4\"] }"
+    - "chrono = { version = \"0.4\", features = [\"serde\"] }"
+    - "tracing = \"0.1\""
+    - "anyhow = \"1.0\""
+  nix:
+    buildInputs:
+      - "openssl"
+      - "pkg-config"
+
+templates:
+  generates:
+    - "observability/prometheus_metrics.rs"
+    - "observability/metrics_auth.rs"
+    - "observability/metrics_registry.rs"
+    - "observability/custom_metrics.rs"
+    - "middleware/metrics_middleware.rs"
+    - "handlers/metrics_handler.rs"
+    - "utils/token_manager.rs"
+  requires:
+    - "error.rs"
+    - "config.rs"
+
+config_schema:
+  metrics_endpoint:
+    type: "string"
+    default: "/metrics"
+    description: "Prometheus metrics endpoint path"
+  authentication_enabled:
+    type: "boolean"
+    default: true
+    description: "Enable authentication for metrics endpoint"
+  auth_method:
+    type: "string"
+    enum: ["bearer_token", "api_key", "jwt"]
+    default: "bearer_token"
+    description: "Authentication method for metrics"
+  token_env_var:
+    type: "string"
+    default: "METRICS_TOKEN"
+    description: "Environment variable containing metrics access token"
+  rate_limit_requests_per_minute:
+    type: "integer"
+    default: 60
+    description: "Rate limit for metrics endpoint (requests per minute)"
+  rate_limit_burst_size:
+    type: "integer"
+    default: 10
+    description: "Burst size for rate limiting"
+  include_go_metrics:
+    type: "boolean"
+    default: false
+    description: "Include Go runtime-style metrics for compatibility"
+  metrics_namespace:
+    type: "string"
+    default: ""
+    description: "Namespace prefix for all metrics"
+  histogram_buckets:
+    type: "array"
+    items: "float"
+    default: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+    description: "Default histogram buckets"
+
+# Prometheus configuration
+prometheus:
+  version: "2.47.0"
+  exposition_format: "text/plain; version=0.0.4"
+  supported_metric_types: ["counter", "gauge", "histogram", "summary"]
+  
+  # Built-in metrics
+  builtin_metrics:
+    http:
+      - "http_requests_total"
+      - "http_request_duration_seconds"
+      - "http_requests_in_flight"
+    
+    system:
+      - "process_cpu_seconds_total"
+      - "process_resident_memory_bytes"
+      - "process_virtual_memory_bytes"
+      - "process_open_fds"
+    
+    database:
+      - "database_connections_active"
+      - "database_connections_idle"
+      - "database_query_duration_seconds"
+    
+    application:
+      - "application_version_info"
+      - "application_uptime_seconds"
+
+tests:
+  unit:
+    - "test_metrics_collection"
+    - "test_token_validation"
+    - "test_rate_limiting"
+    - "test_metrics_formatting"
+    - "test_custom_metrics"
+  integration:
+    - "test_metrics_endpoint"
+    - "test_authentication_flow"
+    - "test_prometheus_scraping"
+    - "test_high_cardinality_protection"
+  security:
+    - "test_unauthorized_access"
+    - "test_token_expiration"
+    - "test_rate_limit_enforcement"
+    - "test_sensitive_data_filtering"
+
+documentation:
+  setup_guide: true
+  metrics_reference: true
+  authentication_guide: true
+  grafana_dashboards: true
+  alerting_rules: true
+
+features:
+  metrics_collection:
+    - "counter_metrics"
+    - "gauge_metrics" 
+    - "histogram_metrics"
+    - "summary_metrics"
+  
+  authentication:
+    - "bearer_token_auth"
+    - "jwt_validation"
+    - "api_key_auth"
+    - "scope_based_access"
+  
+  security:
+    - "rate_limiting"
+    - "token_rotation"
+    - "audit_logging"
+    - "ip_whitelisting"
+  
+  integration:
+    - "prometheus_compatible"
+    - "grafana_ready"
+    - "alertmanager_ready"
+    - "opentelemetry_bridge"

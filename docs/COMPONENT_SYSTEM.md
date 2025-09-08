@@ -597,6 +597,102 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## Component Testing
+
+### Testing Framework Integration
+
+The component system includes comprehensive testing capabilities through the `rustform component test` command:
+
+```bash
+# Test a specific component
+rustform component test jwt-manager
+
+# Test with test application generation
+rustform component test jwt-manager --generate-test-app
+
+# Test only unit tests
+rustform component test jwt-manager --unit-tests-only
+
+# Skip compatibility checks
+rustform component test jwt-manager --skip-compatibility
+```
+
+### Testing Phases
+
+The component testing system validates components through five distinct phases:
+
+1. **Manifest Validation**: Ensures `rustform-component.yml` is valid and complete
+2. **Compatibility Check**: Verifies component works with current rust-form version
+3. **Unit Tests**: Discovers and executes component-specific unit tests
+4. **Integration Testing**: Generates test application and validates compilation
+5. **Quality Assessment**: Evaluates documentation, examples, and overall quality
+
+### Quality Scoring
+
+Components receive a quality score (0-100) based on:
+
+- **Manifest Completeness (25 points)**: Description, author, license, repository
+- **Documentation (20 points)**: README.md, API docs, tutorials
+- **Examples (15 points)**: Working usage examples
+- **Testing (25 points)**: Unit tests, integration tests, coverage
+- **Functionality (15 points)**: Templates, assets, hooks provided
+
+Quality grades:
+- **A+ (90-100)**: Excellent - Production ready
+- **A (80-89)**: Very Good - Ready with minor improvements  
+- **B (70-79)**: Good - Acceptable for production
+- **C (60-69)**: Fair - Needs improvement before production
+- **D (50-59)**: Poor - Significant issues to address
+- **F (<50)**: Needs Improvement - Not ready for use
+
+### Testing Standards
+
+All components must meet these standards for production readiness:
+
+#### Mandatory Requirements
+- Valid `rustform-component.yml` manifest
+- Compatibility with target rust-form version
+- Generated test application must compile successfully
+
+#### Recommended Requirements  
+- README.md with comprehensive usage instructions
+- Unit tests with ≥80% code coverage
+- Working examples demonstrating component usage
+- Complete metadata (author, license, repository)
+
+### Test File Discovery
+
+The testing system automatically discovers tests using these patterns:
+
+- **Rust**: `*_test.rs`, `test_*.rs` in `tests/` or `src/` directories
+- **JavaScript/TypeScript**: `*.test.js`, `*.test.ts` files
+- **Integration**: `tests/integration/` directory
+
+### Continuous Integration
+
+Components should integrate testing into CI pipelines:
+
+```yaml
+# .github/workflows/component-test.yml
+name: Component Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install rust-form
+        run: cargo install rustform-cli
+      - name: Test component
+        run: rustform component test . --generate-test-app
+      - name: Check quality gate
+        run: |
+          if ! rustform component test . --unit-tests-only | grep -q "Quality.*[7-9][0-9]"; then
+            echo "Quality score below 70 threshold"
+            exit 1
+          fi
+```
+
 ## Development Workflow
 
 ### Component Development
@@ -614,12 +710,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
    cargo watch -x test  # Auto-test on changes
    ```
 
-3. **Generate Documentation**:
+3. **Test Component During Development**:
+   ```bash
+   # Quick unit test validation
+   rustform component test . --unit-tests-only
+   
+   # Full validation including test app generation
+   rustform component test . --generate-test-app
+   
+   # Check quality metrics
+   rustform component test . | grep "Quality Assessment"
+   ```
+
+4. **Generate Documentation**:
    ```bash
    rustform component docs --name "new-component"
    ```
 
-4. **Integration Testing**:
+5. **Integration Testing**:
    ```bash
    rustform test --component "new-component"
    ```
@@ -638,16 +746,62 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
          max_connections: 10
    ```
 
-2. **Generate Application**:
+2. **Validate Components Before Use**:
+   ```bash
+   # Test all components in project
+   for component in $(yq eval '.components[].name' rustform.yml); do
+     rustform component test "$component"
+   done
+   ```
+
+3. **Generate Application**:
    ```bash
    rustform generate --config rustform.yml
    ```
 
-3. **Development Environment**:
+4. **Development Environment**:
    ```bash
    nix develop  # Includes all component dependencies
    cargo run
    ```
+
+### Component Quality Assurance
+
+#### Pre-commit Testing
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+set -e
+
+echo "Running component tests..."
+for component_dir in components/*/; do
+  if [ -f "$component_dir/rustform-component.yml" ]; then
+    component_name=$(basename "$component_dir")
+    echo "Testing component: $component_name"
+    
+    rustform component test "$component_dir" --unit-tests-only
+    
+    # Check quality threshold
+    quality_score=$(rustform component test "$component_dir" | grep "Overall Score:" | sed 's/.*: \([0-9.]*\).*/\1/')
+    if (( $(echo "$quality_score < 70" | bc -l) )); then
+      echo "❌ Component $component_name quality score ($quality_score) below threshold (70)"
+      exit 1
+    fi
+  fi
+done
+
+echo "✅ All component tests passed"
+```
+
+#### Release Validation
+```bash
+# Comprehensive pre-release component validation
+rustform component test --all-components \
+  --generate-test-app \
+  --coverage-report \
+  --security-scan \
+  --performance-benchmark
+```
 
 ## Conclusion
 

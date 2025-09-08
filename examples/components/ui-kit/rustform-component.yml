@@ -4,8 +4,18 @@ description: "Basic UI components for Rust-form projects"
 author: "rust-form"
 homepage: "https://github.com/rust-form/ui-components"
 keywords: []
+
+api_compatibility:
+  api_version: "0.1.0"
+  min_version: "0.1.0"
+  max_version: "0.2.0"
+  experimental: false
+
 dependencies: {}
-files: []
+files: 
+  - "button.tera"
+  - "form.tera"  
+  - "input.tera"
 
 provides:
   templates:

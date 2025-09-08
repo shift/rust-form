@@ -25,7 +25,7 @@ impl Day2Operations {
         for middleware in &config.middleware {
             match middleware {
                 crate::config::MiddlewareConfig::Security { security } => {
-                    if security.helmet == Some(true) {
+                    if security.helmet {
                         warnings.push(DeprecationWarning {
                             feature: "helmet middleware option".to_string(),
                             message: "The 'helmet' option is deprecated".to_string(),
@@ -137,7 +137,7 @@ impl Day2Operations {
             rust_form_version: "0.1.0".to_string(),
             config_api_version: config.api_version.clone(),
             config_schema_version: config.schema_version.clone(),
-            issues,
+            issues: issues.clone(),
             warnings,
             overall_compatible: issues.is_empty(),
         }

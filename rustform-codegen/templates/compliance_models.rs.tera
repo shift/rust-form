@@ -1,0 +1,566 @@
+// Auto-generated compliance-aware database models for {{ project_name }}
+// Includes GDPR, CCPA, and data retention compliance
+
+use sqlx::{PgPool, Row, FromRow};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+use chrono::{DateTime, Utc};
+
+{% for model in models %}
+// {{ model.name }} - {{ model.description }}
+{% if model.compliance.data_subject %}
+// GDPR Data Subject: {{ model.compliance.retention_period }} retention period
+{% endif %}
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct {{ model.name }} {
+    {% for field in model.fields %}
+    {% if field.compliance.personal_data %}
+    /// Personal data field - requires consent: {{ field.compliance.consent_category }}
+    /// Lawful basis: {{ field.compliance.lawful_basis | default(value="consent") }}
+    {% endif %}
+    pub {{ field.name }}: {{ field.type | rust_type }},
+    {% endfor %}
+    
+    {% if model.compliance.data_subject %}
+    // Compliance tracking fields
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub retention_expires_at: Option<DateTime<Utc>>,
+    pub consent_timestamp: Option<DateTime<Utc>>,
+    pub lawful_basis: String,
+    pub data_source: Option<String>,
+    pub processing_purposes: Vec<String>,
+    
+    // Deletion tracking
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub deletion_reason: Option<String>,
+    pub anonymized_at: Option<DateTime<Utc>>,
+    pub pseudonymized_at: Option<DateTime<Utc>>,
+    
+    // Audit trail
+    pub last_accessed_at: Option<DateTime<Utc>>,
+    pub access_count: i32,
+    {% endif %}
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Create{{ model.name }}Request {
+    {% for field in model.fields %}
+    {% if field.required and not field.primary_key and not field.name == "created_at" and not field.name == "updated_at" %}
+    pub {{ field.name }}: {{ field.type | rust_type }},
+    {% endif %}
+    {% endfor %}
+    
+    {% if model.compliance.data_subject %}
+    // Compliance information
+    pub consents: std::collections::HashMap<String, bool>,
+    pub processing_purposes: Vec<String>,
+    pub lawful_basis: Option<String>,
+    pub data_source: Option<String>,
+    {% endif %}
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Update{{ model.name }}Request {
+    {% for field in model.fields %}
+    {% if not field.primary_key and not field.name == "created_at" and not field.name == "updated_at" %}
+    pub {{ field.name }}: Option<{{ field.type | rust_type }}>,
+    {% endif %}
+    {% endfor %}
+    
+    {% if model.compliance.data_subject %}
+    // Updated consents (if any)
+    pub updated_consents: Option<std::collections::HashMap<String, bool>>,
+    {% endif %}
+}
+
+impl {{ model.name }} {
+    {% if model.compliance.data_subject %}
+    /// Create with compliance tracking
+    pub fn new_with_compliance(
+        request: Create{{ model.name }}Request,
+        retention_period: chrono::Duration,
+    ) -> Self {
+        let now = Utc::now();
+        
+        Self {
+            id: Uuid::new_v4(),
+            {% for field in model.fields %}
+            {% if not field.primary_key and not field.name == "created_at" and not field.name == "updated_at" %}
+            {{ field.name }}: request.{{ field.name }},
+            {% endif %}
+            {% endfor %}
+            created_at: now,
+            updated_at: now,
+            retention_expires_at: Some(now + retention_period),
+            consent_timestamp: Some(now),
+            lawful_basis: request.lawful_basis.unwrap_or_else(|| "consent".to_string()),
+            data_source: request.data_source,
+            processing_purposes: request.processing_purposes,
+            deleted_at: None,
+            deletion_reason: None,
+            anonymized_at: None,
+            pseudonymized_at: None,
+            last_accessed_at: None,
+            access_count: 0,
+        }
+    }
+
+    /// Check if data has expired per retention policy
+    pub fn is_retention_expired(&self) -> bool {
+        if let Some(expires_at) = self.retention_expires_at {
+            expires_at < Utc::now()
+        } else {
+            false
+        }
+    }
+
+    /// Get personal data fields for GDPR export
+    pub fn get_personal_data(&self) -> serde_json::Value {
+        serde_json::json!({
+            {% for field in model.fields %}
+            {% if field.compliance.personal_data %}
+            "{{ field.name }}": self.{{ field.name }},
+            {% endif %}
+            {% endfor %}
+            "data_created": self.created_at,
+            "data_updated": self.updated_at,
+            "consent_given": self.consent_timestamp,
+            "processing_purposes": self.processing_purposes,
+            "lawful_basis": self.lawful_basis
+        })
+    }
+
+    /// Anonymize personal data (GDPR Article 17)
+    pub fn anonymize(&mut self) {
+        {% for field in model.fields %}
+        {% if field.compliance.personal_data %}
+        {% if field.type == "string" %}
+        self.{{ field.name }} = "[ANONYMIZED]".to_string();
+        {% elif field.type == "email" %}
+        self.{{ field.name }} = "anonymized@example.com".to_string();
+        {% elif field.type == "integer" %}
+        self.{{ field.name }} = 0;
+        {% elif field.type == "boolean" %}
+        self.{{ field.name }} = false;
+        {% endif %}
+        {% endif %}
+        {% endfor %}
+        self.anonymized_at = Some(Utc::now());
+        self.updated_at = Utc::now();
+    }
+
+    /// Pseudonymize identifiers
+    pub fn pseudonymize(&mut self, pseudonym: &str) {
+        {% for field in model.fields %}
+        {% if field.compliance.personal_data and field.compliance.identifier %}
+        self.{{ field.name }} = format!("PSEUD_{}", pseudonym);
+        {% endif %}
+        {% endfor %}
+        self.pseudonymized_at = Some(Utc::now());
+        self.updated_at = Utc::now();
+    }
+
+    /// Record data access for audit trail
+    pub fn record_access(&mut self) {
+        self.last_accessed_at = Some(Utc::now());
+        self.access_count += 1;
+    }
+    {% endif %}
+}
+
+// Database service for {{ model.name }}
+#[derive(Clone)]
+pub struct {{ model.name }}Service {
+    pool: PgPool,
+    {% if model.compliance.data_subject %}
+    audit_service: AuditService,
+    compliance_service: ComplianceService,
+    {% endif %}
+}
+
+impl {{ model.name }}Service {
+    pub fn new(
+        pool: PgPool,
+        {% if model.compliance.data_subject %}
+        audit_service: AuditService,
+        compliance_service: ComplianceService,
+        {% endif %}
+    ) -> Self {
+        Self {
+            pool,
+            {% if model.compliance.data_subject %}
+            audit_service,
+            compliance_service,
+            {% endif %}
+        }
+    }
+
+    /// Create with compliance tracking
+    pub async fn create_with_compliance(
+        &self,
+        request: Create{{ model.name }}Request,
+    ) -> Result<{{ model.name }}, sqlx::Error> {
+        {% if model.compliance.data_subject %}
+        // Verify required consents
+        self.compliance_service.verify_consents(&request.consents).await?;
+        
+        // Calculate retention period
+        let retention_period = self.compliance_service
+            .get_retention_period("{{ model.name | snake_case }}").await?;
+        
+        let record = {{ model.name }}::new_with_compliance(request, retention_period);
+        {% else %}
+        let record = {{ model.name }} {
+            id: Uuid::new_v4(),
+            {% for field in model.fields %}
+            {% if not field.primary_key %}
+            {{ field.name }}: request.{{ field.name }},
+            {% endif %}
+            {% endfor %}
+        };
+        {% endif %}
+
+        let result = sqlx::query!(
+            r#"
+            INSERT INTO {{ model.name | snake_case }} (
+                id,
+                {% for field in model.fields %}
+                {% if not field.primary_key %}
+                {{ field.name }},
+                {% endif %}
+                {% endfor %}
+                {% if model.compliance.data_subject %}
+                created_at, updated_at, retention_expires_at, consent_timestamp,
+                lawful_basis, processing_purposes, access_count
+                {% endif %}
+            ) VALUES (
+                $1,
+                {% for field in model.fields %}
+                {% if not field.primary_key %}
+                ${{ loop.index + 1 }},
+                {% endif %}
+                {% endfor %}
+                {% if model.compliance.data_subject %}
+                ${{ model.fields | length + 1 }}, ${{ model.fields | length + 2 }}, 
+                ${{ model.fields | length + 3 }}, ${{ model.fields | length + 4 }},
+                ${{ model.fields | length + 5 }}, ${{ model.fields | length + 6 }}, ${{ model.fields | length + 7 }}
+                {% endif %}
+            )
+            RETURNING *
+            "#,
+            record.id,
+            {% for field in model.fields %}
+            {% if not field.primary_key %}
+            record.{{ field.name }},
+            {% endif %}
+            {% endfor %}
+            {% if model.compliance.data_subject %}
+            record.created_at,
+            record.updated_at,
+            record.retention_expires_at,
+            record.consent_timestamp,
+            record.lawful_basis,
+            &record.processing_purposes,
+            record.access_count,
+            {% endif %}
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        {% if model.compliance.data_subject %}
+        // Log creation for audit trail
+        self.audit_service.log_data_creation(
+            "{{ model.name | snake_case }}",
+            &record.id.to_string(),
+            &serde_json::to_value(&record)?,
+        ).await?;
+        {% endif %}
+
+        Ok({{ model.name }}::from_row(&result)?)
+    }
+
+    /// Get by ID with compliance checks
+    pub async fn get(&self, id: Uuid) -> Result<Option<{{ model.name }}>, sqlx::Error> {
+        let mut record = sqlx::query_as!(
+            {{ model.name }},
+            "SELECT * FROM {{ model.name | snake_case }} WHERE id = $1 AND deleted_at IS NULL",
+            id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        {% if model.compliance.data_subject %}
+        if let Some(ref mut r) = record {
+            // Check retention expiry
+            if r.is_retention_expired() {
+                warn!("Attempted access to expired data: {{ model.name }} {}", id);
+                // Auto-trigger deletion of expired data
+                self.delete_expired(id).await?;
+                return Ok(None);
+            }
+
+            // Record access for audit
+            r.record_access();
+            self.update_access_tracking(id).await?;
+
+            // Log access
+            self.audit_service.log_data_access(
+                "{{ model.name | snake_case }}",
+                &id.to_string(),
+                None, // User ID would come from request context
+            ).await?;
+        }
+        {% endif %}
+
+        Ok(record)
+    }
+
+    /// Update with compliance tracking
+    pub async fn update_with_compliance(
+        &self,
+        id: Uuid,
+        request: Update{{ model.name }}Request,
+    ) -> Result<{{ model.name }}, sqlx::Error> {
+        {% if model.compliance.data_subject %}
+        // Get existing record for audit
+        let existing = self.get(id).await?
+            .ok_or_else(|| sqlx::Error::RowNotFound)?;
+        {% endif %}
+
+        let updated = sqlx::query_as!(
+            {{ model.name }},
+            r#"
+            UPDATE {{ model.name | snake_case }} 
+            SET 
+                {% for field in model.fields %}
+                {% if not field.primary_key and not field.name == "created_at" %}
+                {{ field.name }} = COALESCE(${{ loop.index + 1 }}, {{ field.name }}),
+                {% endif %}
+                {% endfor %}
+                updated_at = NOW()
+            WHERE id = $1 AND deleted_at IS NULL
+            RETURNING *
+            "#,
+            id,
+            {% for field in model.fields %}
+            {% if not field.primary_key and not field.name == "created_at" %}
+            request.{{ field.name }},
+            {% endif %}
+            {% endfor %}
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        {% if model.compliance.data_subject %}
+        // Log modification for audit
+        self.audit_service.log_data_modification(
+            "{{ model.name | snake_case }}",
+            &id.to_string(),
+            &serde_json::to_value(&existing)?,
+            &serde_json::to_value(&updated)?,
+        ).await?;
+
+        // Update consents if provided
+        if let Some(updated_consents) = request.updated_consents {
+            self.compliance_service.update_consents(
+                &id.to_string(),
+                updated_consents,
+            ).await?;
+        }
+        {% endif %}
+
+        Ok(updated)
+    }
+
+    {% if model.compliance.data_subject %}
+    /// GDPR-compliant deletion with cascade
+    pub async fn delete_with_gdpr_compliance(&self, id: Uuid) -> Result<(), sqlx::Error> {
+        // Get record for audit
+        let record = self.get(id).await?
+            .ok_or_else(|| sqlx::Error::RowNotFound)?;
+
+        // Soft delete first
+        sqlx::query!(
+            "UPDATE {{ model.name | snake_case }} SET deleted_at = NOW(), deletion_reason = 'gdpr_request' WHERE id = $1",
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        // Handle cascading deletions
+        {% for cascade_table in model.compliance.deletion_cascade %}
+        self.compliance_service.cascade_delete("{{ cascade_table }}", id).await?;
+        {% endfor %}
+
+        // Log deletion
+        self.audit_service.log_data_deletion(
+            "{{ model.name | snake_case }}",
+            &id.to_string(),
+        ).await?;
+
+        Ok(())
+    }
+
+    /// Delete expired data per retention policy
+    pub async fn delete_expired(&self, id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE {{ model.name | snake_case }} SET deleted_at = NOW(), deletion_reason = 'retention_policy' WHERE id = $1",
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Update access tracking
+    async fn update_access_tracking(&self, id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE {{ model.name | snake_case }} SET last_accessed_at = NOW(), access_count = access_count + 1 WHERE id = $1",
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Get personal data for GDPR export
+    pub async fn get_personal_data_for_subject(&self, subject_id: &str) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+        let records = sqlx::query_as!(
+            {{ model.name }},
+            "SELECT * FROM {{ model.name | snake_case }} WHERE {{ model.compliance.subject_id_field | default(value="id") }} = $1 AND deleted_at IS NULL",
+            subject_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(records.into_iter().map(|r| r.get_personal_data()).collect())
+    }
+
+    /// Anonymize records for subject
+    pub async fn anonymize_subject_data(&self, subject_id: &str) -> Result<i64, sqlx::Error> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE {{ model.name | snake_case }} 
+            SET 
+                {% for field in model.fields %}
+                {% if field.compliance.personal_data %}
+                {% if field.type == "string" %}
+                {{ field.name }} = '[ANONYMIZED]',
+                {% elif field.type == "email" %}
+                {{ field.name }} = 'anonymized@example.com',
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+                anonymized_at = NOW(),
+                updated_at = NOW()
+            WHERE {{ model.compliance.subject_id_field | default(value="id") }} = $1 
+            AND deleted_at IS NULL 
+            AND anonymized_at IS NULL
+            "#,
+            subject_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
+    {% else %}
+    /// Standard deletion for non-personal data
+    pub async fn delete(&self, id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "DELETE FROM {{ model.name | snake_case }} WHERE id = $1",
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+    {% endif %}
+
+    /// List with pagination and compliance filtering
+    pub async fn list(
+        &self,
+        page: u32,
+        limit: u32,
+        {% if model.compliance.data_subject %}
+        include_expired: bool,
+        {% endif %}
+    ) -> Result<(Vec<{{ model.name }}>, i64), sqlx::Error> {
+        let offset = (page - 1) * limit;
+
+        let records = sqlx::query_as!(
+            {{ model.name }},
+            r#"
+            SELECT * FROM {{ model.name | snake_case }} 
+            WHERE deleted_at IS NULL
+            {% if model.compliance.data_subject %}
+            AND ($3 OR retention_expires_at IS NULL OR retention_expires_at > NOW())
+            {% endif %}
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+            limit as i64,
+            offset as i64,
+            {% if model.compliance.data_subject %}
+            include_expired,
+            {% endif %}
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let total_count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*) FROM {{ model.name | snake_case }} 
+            WHERE deleted_at IS NULL
+            {% if model.compliance.data_subject %}
+            AND ($1 OR retention_expires_at IS NULL OR retention_expires_at > NOW())
+            {% endif %}
+            "#,
+            {% if model.compliance.data_subject %}
+            include_expired,
+            {% endif %}
+        )
+        .fetch_one(&self.pool)
+        .await?
+        .unwrap_or(0);
+
+        Ok((records, total_count))
+    }
+}
+{% endfor %}
+
+// Compliance-specific services
+use crate::compliance::{ComplianceService, AuditService};
+
+impl ComplianceService {
+    /// Verify required consents are granted
+    pub async fn verify_consents(&self, consents: &std::collections::HashMap<String, bool>) -> Result<(), sqlx::Error> {
+        // Implementation for consent verification
+        let required_consents = vec!["essential", "terms_of_service"];
+        
+        for required in required_consents {
+            if !consents.get(required).unwrap_or(&false) {
+                return Err(sqlx::Error::RowNotFound); // Use proper error type
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Get retention period for data category
+    pub async fn get_retention_period(&self, data_category: &str) -> Result<chrono::Duration, sqlx::Error> {
+        // Look up retention period from configuration
+        {% for policy in compliance.retention_policies %}
+        if data_category == "{{ policy.data_category }}" {
+            return Ok(chrono::Duration::days({{ policy.retention_period | parse_duration }}));
+        }
+        {% endfor %}
+        
+        // Default retention period
+        Ok(chrono::Duration::days({{ compliance.default_retention_days | default(value="2555") }})) // 7 years default
+    }
+}

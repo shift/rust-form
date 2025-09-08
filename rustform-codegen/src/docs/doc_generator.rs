@@ -1,4 +1,4 @@
-use crate::component::schema::ComponentConfig;
+use rustform_core::component::ComponentManifest as ComponentConfig;
 use std::collections::HashMap;
 use tera::{Tera, Context};
 
@@ -30,7 +30,7 @@ impl DocGenerator {
         generated_docs.insert("README.md".to_string(), readme);
         
         // Generate API documentation
-        if config.documentation.api_docs {
+        if config.documentation.as_ref().and_then(|d| d.api_reference).unwrap_or(false) {
             let api_docs = self.generate_api_docs(config)?;
             generated_docs.insert("docs/api.md".to_string(), api_docs);
         }
@@ -44,16 +44,14 @@ impl DocGenerator {
         generated_docs.insert("docs/integration.md".to_string(), integration_guide);
         
         // Generate examples
-        for example in &config.documentation.examples {
-            let example_content = self.generate_example(config, example)?;
-            generated_docs.insert(
-                format!("examples/{}", example),
-                example_content
-            );
+        if let Some(ref doc_config) = config.documentation {
+            // For now, generate basic examples - there's no examples field in DocumentationConfig
+            let basic_example = self.generate_basic_example(config)?;
+            generated_docs.insert("examples/basic.md".to_string(), basic_example);
         }
         
-        // Generate tutorial if requested
-        if config.documentation.tutorial {
+        // Generate tutorial
+        if config.documentation.as_ref().and_then(|d| d.implementation_checklist).unwrap_or(false) {
             let tutorial = self.generate_tutorial(config)?;
             generated_docs.insert("docs/tutorial.md".to_string(), tutorial);
         }
@@ -216,11 +214,12 @@ impl DocGenerator {
             TocEntry { title: "Configuration".to_string(), anchor: "configuration".to_string() },
         ];
         
-        if config.documentation.api_docs {
+        if config.documentation.as_ref().and_then(|d| d.api_reference).unwrap_or(false) {
             toc.push(TocEntry { title: "API Reference".to_string(), anchor: "api-reference".to_string() });
         }
         
-        if !config.documentation.examples.is_empty() {
+        // Always include examples if documentation config exists
+        if config.documentation.is_some() {
             toc.push(TocEntry { title: "Examples".to_string(), anchor: "examples".to_string() });
         }
         
@@ -237,9 +236,11 @@ impl DocGenerator {
         let mut endpoints = Vec::new();
         
         // Analyze templates to determine API endpoints
-        for template in &config.templates.generates {
-            if template.contains("handler") || template.contains("route") {
-                match config.category_str() {
+        if let Some(ref template_config) = config.templates {
+            if let Some(ref generates) = template_config.generates {
+                for template in generates {
+                    if template.contains("handler") || template.contains("route") {
+                        match config.category_str() {
                     "auth" => {
                         endpoints.extend(vec![
                             ApiEndpoint {
@@ -281,10 +282,12 @@ impl DocGenerator {
                             ],
                         });
                     },
-                    _ => {}
+                        _ => {}
+                    }
                 }
             }
         }
+    }
         
         endpoints
     }
@@ -568,6 +571,39 @@ components:
         } else {
             "generic".to_string()
         }
+    }
+    
+    /// Generate a basic example for the component
+    fn generate_basic_example(&self, config: &ComponentConfig) -> Result<String, DocGenerationError> {
+        let content = format!(
+r#"# Basic Example
+
+This is a basic example for the {} component.
+
+## Quick Start
+
+1. Install the component
+2. Configure your application
+3. Use the component
+
+## Configuration
+
+```yaml
+name: {}
+version: {}{}
+```
+
+## Usage
+
+Add this component to your project and configure it according to your needs.
+"#,
+            config.name,
+            config.name,
+            config.version,
+            config.description.as_ref().map(|d| format!("\ndescription: {}", d)).unwrap_or_default()
+        );
+        
+        Ok(content)
     }
 }
 

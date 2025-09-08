@@ -107,32 +107,34 @@ impl ComponentFetcher {
         };
 
         // Load templates
-        for template_spec in &manifest.provides.templates {
-            let template_path = base_path.join(&template_spec.path);
-            if template_path.exists() {
-                let template_content = fs::read_to_string(&template_path)
-                    .map_err(|e| Error::ComponentError(format!("Failed to read template {}: {}", template_spec.name, e)))?;
-                content.templates.insert(template_spec.name.clone(), template_content);
+        if let Some(ref provides) = manifest.provides {
+            for template_spec in &provides.templates {
+                let template_path = base_path.join(&template_spec.path);
+                if template_path.exists() {
+                    let template_content = fs::read_to_string(&template_path)
+                        .map_err(|e| Error::ComponentError(format!("Failed to read template {}: {}", template_spec.name, e)))?;
+                    content.templates.insert(template_spec.name.clone(), template_content);
+                }
             }
-        }
 
-        // Load assets
-        for asset_spec in &manifest.provides.assets {
-            let asset_path = base_path.join(&asset_spec.path);
-            if asset_path.exists() {
-                let asset_content = fs::read(&asset_path)
-                    .map_err(|e| Error::ComponentError(format!("Failed to read asset {}: {}", asset_spec.name, e)))?;
-                content.assets.insert(asset_spec.name.clone(), asset_content);
+            // Load assets
+            for asset_spec in &provides.assets {
+                let asset_path = base_path.join(&asset_spec.path);
+                if asset_path.exists() {
+                    let asset_content = fs::read(&asset_path)
+                        .map_err(|e| Error::ComponentError(format!("Failed to read asset {}: {}", asset_spec.name, e)))?;
+                    content.assets.insert(asset_spec.name.clone(), asset_content);
+                }
             }
-        }
 
-        // Load hooks
-        for hook_spec in &manifest.provides.hooks {
-            let hook_path = base_path.join(&hook_spec.script);
-            if hook_path.exists() {
-                let hook_content = fs::read_to_string(&hook_path)
-                    .map_err(|e| Error::ComponentError(format!("Failed to read hook {}: {}", hook_spec.name, e)))?;
-                content.hooks.insert(hook_spec.name.clone(), hook_content);
+            // Load hooks
+            for hook_spec in &provides.hooks {
+                let hook_path = base_path.join(&hook_spec.script);
+                if hook_path.exists() {
+                    let hook_content = fs::read_to_string(&hook_path)
+                        .map_err(|e| Error::ComponentError(format!("Failed to read hook {}: {}", hook_spec.name, e)))?;
+                    content.hooks.insert(hook_spec.name.clone(), hook_content);
+                }
             }
         }
 
@@ -189,44 +191,46 @@ impl ComponentFetcher {
         };
 
         // Fetch templates
-        for template_spec in &manifest.provides.templates {
-            let url = format!(
-                "https://raw.githubusercontent.com/{}/{}/{}/{}",
-                owner, repo, ref_name, template_spec.path
-            );
-            
-            if let Ok(template_content) = self.fetch_text_from_url(&url).await {
-                content.templates.insert(template_spec.name.clone(), template_content);
-            } else {
-                warn!("Failed to fetch template: {}", template_spec.name);
+        if let Some(ref provides) = manifest.provides {
+            for template_spec in &provides.templates {
+                let url = format!(
+                    "https://raw.githubusercontent.com/{}/{}/{}/{}",
+                    owner, repo, ref_name, template_spec.path
+                );
+                
+                if let Ok(template_content) = self.fetch_text_from_url(&url).await {
+                    content.templates.insert(template_spec.name.clone(), template_content);
+                } else {
+                    warn!("Failed to fetch template: {}", template_spec.name);
+                }
             }
-        }
 
-        // Fetch assets
-        for asset_spec in &manifest.provides.assets {
-            let url = format!(
-                "https://raw.githubusercontent.com/{}/{}/{}/{}",
-                owner, repo, ref_name, asset_spec.path
-            );
-            
-            if let Ok(asset_content) = self.fetch_bytes_from_url(&url).await {
-                content.assets.insert(asset_spec.name.clone(), asset_content);
-            } else {
-                warn!("Failed to fetch asset: {}", asset_spec.name);
+            // Fetch assets
+            for asset_spec in &provides.assets {
+                let url = format!(
+                    "https://raw.githubusercontent.com/{}/{}/{}/{}",
+                    owner, repo, ref_name, asset_spec.path
+                );
+                
+                if let Ok(asset_content) = self.fetch_bytes_from_url(&url).await {
+                    content.assets.insert(asset_spec.name.clone(), asset_content);
+                } else {
+                    warn!("Failed to fetch asset: {}", asset_spec.name);
+                }
             }
-        }
 
-        // Fetch hooks
-        for hook_spec in &manifest.provides.hooks {
-            let url = format!(
-                "https://raw.githubusercontent.com/{}/{}/{}/{}",
-                owner, repo, ref_name, hook_spec.script
-            );
-            
-            if let Ok(hook_content) = self.fetch_text_from_url(&url).await {
-                content.hooks.insert(hook_spec.name.clone(), hook_content);
-            } else {
-                warn!("Failed to fetch hook: {}", hook_spec.name);
+            // Fetch hooks
+            for hook_spec in &provides.hooks {
+                let url = format!(
+                    "https://raw.githubusercontent.com/{}/{}/{}/{}",
+                    owner, repo, ref_name, hook_spec.script
+                );
+                
+                if let Ok(hook_content) = self.fetch_text_from_url(&url).await {
+                    content.hooks.insert(hook_spec.name.clone(), hook_content);
+                } else {
+                    warn!("Failed to fetch hook: {}", hook_spec.name);
+                }
             }
         }
 
@@ -270,14 +274,18 @@ impl ComponentFetcher {
         };
 
         // Fetch templates
-        for template_spec in &manifest.provides.templates {
-            let url = format!(
-                "https://gitlab.com/{}/{}/-/raw/{}/{}",
-                owner, repo, ref_name, template_spec.path
-            );
-            
-            if let Ok(template_content) = self.fetch_text_from_url(&url).await {
-                content.templates.insert(template_spec.name.clone(), template_content);
+        if let Some(ref provides) = manifest.provides {
+            for template_spec in &provides.templates {
+                let url = format!(
+                    "https://gitlab.com/{}/{}/-/raw/{}/{}",
+                    owner, repo, ref_name, template_spec.path
+                );
+                
+                if let Ok(template_content) = self.fetch_text_from_url(&url).await {
+                    content.templates.insert(template_spec.name.clone(), template_content);
+                } else {
+                    warn!("Failed to fetch template: {}", template_spec.name);
+                }
             }
         }
 

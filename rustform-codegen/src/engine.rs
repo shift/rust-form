@@ -151,8 +151,8 @@ impl TemplateEngine {
                     version: component_uri.version.clone().unwrap_or_else(|| "latest".to_string()),
                     resolved: component_uri.resolve_url()
                         .map_err(|e| CodeGenError::Template(format!("Failed to resolve URL for '{}': {}", component_name, e)))?,
-                    integrity: manifest.integrity.unwrap_or_default(),
-                    dependencies: manifest.dependencies.clone(),
+                    integrity: manifest.integrity.clone().unwrap_or_default(),
+                    dependencies: manifest.dependencies_as_hashmap(),
                     resolved_at: chrono::Utc::now().to_rfc3339(),
                     size: None,
                 };

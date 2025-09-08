@@ -48,17 +48,52 @@ impl DependencyResolver {
 
         // Convert dependency map to resolvable nodes
         let mut nodes = HashMap::new();
-        for (dep_name, version_constraint) in &manifest.dependencies {
-            let uri = ComponentUri::from_str(dep_name)?;
-            let version_req = VersionReq::parse(version_constraint)
-                .map_err(|e| Error::ValidationError(format!("Invalid version constraint '{}': {}", version_constraint, e)))?;
-            
-            nodes.insert(dep_name.clone(), DependencyNode {
-                uri,
-                version_req,
-                resolved_version: None,
-                manifest: None,
-            });
+        
+        // For now, we'll primarily handle rust dependencies
+        // TODO: Extend to handle more complex dependency structures
+        for dep_line in &manifest.dependencies.rust {
+            // Parse Cargo.toml-style dependencies like "sqlx = { version = \"0.7\", features = [\"postgres\"] }"
+            if let Some(eq_pos) = dep_line.find('=') {
+                let dep_name = dep_line[..eq_pos].trim().to_string();
+                let version_part = dep_line[eq_pos + 1..].trim();
+                
+                // Extract version from various formats
+                let version_constraint = if version_part.starts_with('"') && version_part.ends_with('"') {
+                    // Simple version like "0.7"
+                    version_part.trim_matches('"').to_string()
+                } else if version_part.contains("version") {
+                    // Complex format like { version = "0.7", features = [...] }
+                    // Extract just the version part
+                    if let Some(version_start) = version_part.find("version") {
+                        let after_version = &version_part[version_start + 7..];
+                        if let Some(quote_start) = after_version.find('"') {
+                            let after_quote = &after_version[quote_start + 1..];
+                            if let Some(quote_end) = after_quote.find('"') {
+                                after_quote[..quote_end].to_string()
+                            } else {
+                                continue; // Skip malformed entries
+                            }
+                        } else {
+                            continue; // Skip entries without quotes
+                        }
+                    } else {
+                        continue; // Skip entries without version
+                    }
+                } else {
+                    continue; // Skip unrecognized formats
+                };
+                
+                let uri = ComponentUri::from_str(&dep_name)?;
+                let version_req = VersionReq::parse(&version_constraint)
+                    .map_err(|e| Error::ValidationError(format!("Invalid version constraint '{}': {}", version_constraint, e)))?;
+                
+                nodes.insert(dep_name, DependencyNode {
+                    uri,
+                    version_req,
+                    resolved_version: None,
+                    manifest: None,
+                });
+            }
         }
 
         // Perform dependency resolution using a topological sort approach

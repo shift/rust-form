@@ -1,0 +1,406 @@
+use prometheus::{Counter, Histogram, Gauge, Registry, HistogramOpts};
+use std::sync::Arc;
+
+/// Application metrics registry for Prometheus
+#[derive(Clone)]
+pub struct AppMetrics {
+    // HTTP metrics
+    pub http_requests_total: Counter,
+    pub http_request_duration: Histogram,
+    pub http_requests_in_flight: Gauge,
+    
+    // Database metrics
+    pub database_connections_active: Gauge,
+    pub database_connections_idle: Gauge,
+    pub database_query_duration: Histogram,
+    
+    // System metrics
+    pub process_cpu_seconds_total: Counter,
+    pub process_resident_memory_bytes: Gauge,
+    pub process_virtual_memory_bytes: Gauge,
+    pub process_open_fds: Gauge,
+    
+    // Application metrics
+    pub application_uptime_seconds: Gauge,
+    pub active_connections: Gauge,
+    pub health_check_status: Gauge,
+    
+    {% if scaling.enabled %}
+    // Scaling metrics
+    pub instance_count: Gauge,
+    pub cpu_utilization_percentage: Gauge,
+    pub memory_utilization_percentage: Gauge,
+    pub request_queue_depth: Gauge,
+    {% endif %}
+    
+    // Custom business metrics
+    {% for counter in custom_metrics.counters %}
+    pub {{ counter.name | snake_case }}: Counter,
+    {% endfor %}
+    {% for gauge in custom_metrics.gauges %}
+    pub {{ gauge.name | snake_case }}: Gauge,
+    {% endfor %}
+    {% for histogram in custom_metrics.histograms %}
+    pub {{ histogram.name | snake_case }}: Histogram,
+    {% endfor %}
+}
+
+impl AppMetrics {
+    pub fn new(registry: &Registry) -> Result<Self, prometheus::Error> {
+        let metrics = Self {
+            // HTTP metrics
+            http_requests_total: Counter::new(
+                "http_requests_total",
+                "Total number of HTTP requests"
+            )?,
+            
+            http_request_duration: Histogram::with_opts(
+                HistogramOpts::new(
+                    "http_request_duration_seconds",
+                    "HTTP request duration in seconds"
+                ).buckets({{ observability.prometheus.metrics.http.histogram_buckets | json }})
+            )?,
+            
+            http_requests_in_flight: Gauge::new(
+                "http_requests_in_flight",
+                "Number of HTTP requests currently being processed"
+            )?,
+            
+            // Database metrics
+            database_connections_active: Gauge::new(
+                "database_connections_active",
+                "Number of active database connections"
+            )?,
+            
+            database_connections_idle: Gauge::new(
+                "database_connections_idle", 
+                "Number of idle database connections"
+            )?,
+            
+            database_query_duration: Histogram::with_opts(
+                HistogramOpts::new(
+                    "database_query_duration_seconds",
+                    "Database query execution time in seconds"
+                ).buckets(vec![0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0])
+            )?,
+            
+            // System metrics
+            process_cpu_seconds_total: Counter::new(
+                "process_cpu_seconds_total",
+                "Total user and system CPU time spent in seconds"
+            )?,
+            
+            process_resident_memory_bytes: Gauge::new(
+                "process_resident_memory_bytes",
+                "Resident memory size in bytes"
+            )?,
+            
+            process_virtual_memory_bytes: Gauge::new(
+                "process_virtual_memory_bytes",
+                "Virtual memory size in bytes"
+            )?,
+            
+            process_open_fds: Gauge::new(
+                "process_open_fds",
+                "Number of open file descriptors"
+            )?,
+            
+            // Application metrics
+            application_uptime_seconds: Gauge::new(
+                "application_uptime_seconds",
+                "Application uptime in seconds"
+            )?,
+            
+            active_connections: Gauge::new(
+                "active_connections",
+                "Number of active connections"
+            )?,
+            
+            health_check_status: Gauge::new(
+                "health_check_status",
+                "Health check status (1=healthy, 0.5=warning, 0=unhealthy)"
+            )?,
+            
+            {% if scaling.enabled %}
+            // Scaling metrics
+            instance_count: Gauge::new(
+                "instance_count",
+                "Number of running service instances"
+            )?,
+            
+            cpu_utilization_percentage: Gauge::new(
+                "cpu_utilization_percentage",
+                "CPU utilization percentage"
+            )?,
+            
+            memory_utilization_percentage: Gauge::new(
+                "memory_utilization_percentage", 
+                "Memory utilization percentage"
+            )?,
+            
+            request_queue_depth: Gauge::new(
+                "request_queue_depth",
+                "Number of queued requests waiting for processing"
+            )?,
+            {% endif %}
+            
+            // Custom business metrics
+            {% for counter in custom_metrics.counters %}
+            {{ counter.name | snake_case }}: Counter::new(
+                "{{ counter.name }}",
+                "{{ counter.description }}"
+            )?,
+            {% endfor %}
+            
+            {% for gauge in custom_metrics.gauges %}
+            {{ gauge.name | snake_case }}: Gauge::new(
+                "{{ gauge.name }}",
+                "{{ gauge.description }}"
+            )?,
+            {% endfor %}
+            
+            {% for histogram in custom_metrics.histograms %}
+            {{ histogram.name | snake_case }}: Histogram::with_opts(
+                HistogramOpts::new(
+                    "{{ histogram.name }}",
+                    "{{ histogram.description }}"
+                ).buckets({{ histogram.buckets | json }})
+            )?,
+            {% endfor %}
+        };
+
+        // Register all metrics with the registry
+        registry.register(Box::new(metrics.http_requests_total.clone()))?;
+        registry.register(Box::new(metrics.http_request_duration.clone()))?;
+        registry.register(Box::new(metrics.http_requests_in_flight.clone()))?;
+        
+        registry.register(Box::new(metrics.database_connections_active.clone()))?;
+        registry.register(Box::new(metrics.database_connections_idle.clone()))?;
+        registry.register(Box::new(metrics.database_query_duration.clone()))?;
+        
+        registry.register(Box::new(metrics.process_cpu_seconds_total.clone()))?;
+        registry.register(Box::new(metrics.process_resident_memory_bytes.clone()))?;
+        registry.register(Box::new(metrics.process_virtual_memory_bytes.clone()))?;
+        registry.register(Box::new(metrics.process_open_fds.clone()))?;
+        
+        registry.register(Box::new(metrics.application_uptime_seconds.clone()))?;
+        registry.register(Box::new(metrics.active_connections.clone()))?;
+        registry.register(Box::new(metrics.health_check_status.clone()))?;
+        
+        {% if scaling.enabled %}
+        registry.register(Box::new(metrics.instance_count.clone()))?;
+        registry.register(Box::new(metrics.cpu_utilization_percentage.clone()))?;
+        registry.register(Box::new(metrics.memory_utilization_percentage.clone()))?;
+        registry.register(Box::new(metrics.request_queue_depth.clone()))?;
+        {% endif %}
+        
+        // Register custom metrics
+        {% for counter in custom_metrics.counters %}
+        registry.register(Box::new(metrics.{{ counter.name | snake_case }}.clone()))?;
+        {% endfor %}
+        
+        {% for gauge in custom_metrics.gauges %}
+        registry.register(Box::new(metrics.{{ gauge.name | snake_case }}.clone()))?;
+        {% endfor %}
+        
+        {% for histogram in custom_metrics.histograms %}
+        registry.register(Box::new(metrics.{{ histogram.name | snake_case }}.clone()))?;
+        {% endfor %}
+
+        tracing::info!(
+            metrics_count = %(
+                4 + // HTTP metrics (3) + active_connections
+                3 + // Database metrics  
+                4 + // System metrics
+                3 + // Application metrics
+                {% if scaling.enabled %}4 +{% endif %} // Scaling metrics
+                {{ custom_metrics.counters | length }} +
+                {{ custom_metrics.gauges | length }} +
+                {{ custom_metrics.histograms | length }}
+            ),
+            "Prometheus metrics registered successfully"
+        );
+
+        Ok(metrics)
+    }
+
+    /// Update system metrics (called periodically)
+    pub fn update_system_metrics(&self) -> Result<(), Box<dyn std::error::Error>> {
+        use sysinfo::{System, SystemExt, ProcessExt, PidExt};
+        
+        let mut system = System::new_all();
+        system.refresh_all();
+
+        // Get current process info
+        let pid = sysinfo::get_current_pid()?;
+        if let Some(process) = system.process(pid) {
+            // CPU usage
+            let cpu_usage = process.cpu_usage() as f64 / 100.0; // Convert to seconds
+            self.process_cpu_seconds_total.inc_by(cpu_usage);
+            
+            // Memory usage
+            self.process_resident_memory_bytes.set(process.memory() as f64 * 1024.0);
+            self.process_virtual_memory_bytes.set(process.virtual_memory() as f64 * 1024.0);
+        }
+
+        // File descriptors (Unix-like systems)
+        #[cfg(unix)]
+        {
+            if let Ok(fds) = std::fs::read_dir("/proc/self/fd") {
+                let fd_count = fds.count() as f64;
+                self.process_open_fds.set(fd_count);
+            }
+        }
+
+        {% if scaling.enabled %}
+        // Update scaling metrics
+        let cpu_percent = system.global_cpu_info().cpu_usage() as f64;
+        let memory_percent = (system.used_memory() as f64 / system.total_memory() as f64) * 100.0;
+        
+        self.cpu_utilization_percentage.set(cpu_percent);
+        self.memory_utilization_percentage.set(memory_percent);
+        {% endif %}
+
+        Ok(())
+    }
+
+    /// Record HTTP request metrics
+    pub fn record_http_request(&self, method: &str, path: &str, status: u16, duration: f64) {
+        self.http_requests_total
+            .with_label_values(&[method, path, &status.to_string()])
+            .inc();
+            
+        self.http_request_duration
+            .with_label_values(&[method, path, &status.to_string()])
+            .observe(duration);
+    }
+
+    /// Record database operation metrics
+    pub fn record_database_operation(&self, operation: &str, table: &str, duration: f64) {
+        self.database_query_duration
+            .with_label_values(&[operation, table])
+            .observe(duration);
+    }
+
+    /// Update database connection pool metrics
+    pub fn update_database_pool_metrics(&self, active: u32, idle: u32) {
+        self.database_connections_active.set(active as f64);
+        self.database_connections_idle.set(idle as f64);
+    }
+
+    /// Update application uptime
+    pub fn update_uptime(&self, uptime_seconds: u64) {
+        self.application_uptime_seconds.set(uptime_seconds as f64);
+    }
+
+    /// Record business event (custom counters)
+    {% for counter in custom_metrics.counters %}
+    pub fn record_{{ counter.name | snake_case }}(&self{% for label in counter.labels %}, {{ label | snake_case }}: &str{% endfor %}) {
+        self.{{ counter.name | snake_case }}
+            {% if counter.labels %}
+            .with_label_values(&[{{ counter.labels | map(attribute="snake_case") | map(attribute="prepend", "&") | join(", ") }}])
+            {% endif %}
+            .inc();
+    }
+    {% endfor %}
+
+    /// Update business gauges
+    {% for gauge in custom_metrics.gauges %}
+    pub fn update_{{ gauge.name | snake_case }}(&self, value: f64{% for label in gauge.labels %}, {{ label | snake_case }}: &str{% endfor %}) {
+        self.{{ gauge.name | snake_case }}
+            {% if gauge.labels %}
+            .with_label_values(&[{{ gauge.labels | map(attribute="snake_case") | map(attribute="prepend", "&") | join(", ") }}])
+            {% endif %}
+            .set(value);
+    }
+    {% endfor %}
+
+    /// Record business histograms  
+    {% for histogram in custom_metrics.histograms %}
+    pub fn record_{{ histogram.name | snake_case }}(&self, value: f64{% for label in histogram.labels %}, {{ label | snake_case }}: &str{% endfor %}) {
+        self.{{ histogram.name | snake_case }}
+            {% if histogram.labels %}
+            .with_label_values(&[{{ histogram.labels | map(attribute="snake_case") | map(attribute="prepend", "&") | join(", ") }}])
+            {% endif %}
+            .observe(value);
+    }
+    {% endfor %}
+}
+
+/// Periodic metrics collector
+pub struct MetricsCollector {
+    metrics: Arc<AppMetrics>,
+}
+
+impl MetricsCollector {
+    pub fn new(metrics: Arc<AppMetrics>) -> Self {
+        Self { metrics }
+    }
+
+    /// Start periodic metrics collection
+    pub async fn start_collection(&self) {
+        let metrics = self.metrics.clone();
+        
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(15));
+            
+            loop {
+                interval.tick().await;
+                
+                if let Err(e) = metrics.update_system_metrics() {
+                    tracing::warn!(error = %e, "Failed to update system metrics");
+                }
+                
+                // Update uptime
+                let uptime = get_uptime_seconds();
+                metrics.update_uptime(uptime);
+            }
+        });
+    }
+}
+
+/// Metrics middleware helper functions
+pub fn increment_http_requests_in_flight(metrics: &AppMetrics) {
+    metrics.http_requests_in_flight.inc();
+}
+
+pub fn decrement_http_requests_in_flight(metrics: &AppMetrics) {
+    metrics.http_requests_in_flight.dec();
+}
+
+fn get_uptime_seconds() -> u64 {
+    static START_TIME: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let start = START_TIME.get_or_init(|| std::time::Instant::now());
+    start.elapsed().as_secs()
+}
+
+// Convenience macros for metrics recording
+#[macro_export]
+macro_rules! record_business_counter {
+    ($metrics:expr, $counter:ident) => {
+        $metrics.$counter.inc();
+    };
+    ($metrics:expr, $counter:ident, $($label:expr),+) => {
+        $metrics.$counter.with_label_values(&[$($label),+]).inc();
+    };
+}
+
+#[macro_export]
+macro_rules! record_business_gauge {
+    ($metrics:expr, $gauge:ident, $value:expr) => {
+        $metrics.$gauge.set($value);
+    };
+    ($metrics:expr, $gauge:ident, $value:expr, $($label:expr),+) => {
+        $metrics.$gauge.with_label_values(&[$($label),+]).set($value);
+    };
+}
+
+#[macro_export]
+macro_rules! record_business_histogram {
+    ($metrics:expr, $histogram:ident, $value:expr) => {
+        $metrics.$histogram.observe($value);
+    };
+    ($metrics:expr, $histogram:ident, $value:expr, $($label:expr),+) => {
+        $metrics.$histogram.with_label_values(&[$($label),+]).observe($value);
+    };
+}

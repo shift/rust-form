@@ -1,0 +1,228 @@
+name: "gdpr-data-subject-rights"
+description: "Complete GDPR data subject rights implementation with automated request processing"
+version: "1.0.0"
+category: "compliance"
+files:
+  - "handlers/gdpr_rights_handler.rs"
+  - "services/data_subject_service.rs"
+  - "services/data_deletion_service.rs"
+  - "services/data_export_service.rs"
+  - "services/consent_service.rs"
+  - "middleware/gdpr_compliance_middleware.rs"
+  - "models/data_subject_request.rs"
+  - "models/consent_record.rs"
+  - "models/audit_event.rs"
+  - "migrations/001_gdpr_rights_tables.sql"
+  - "migrations/002_gdpr_audit_tables.sql"
+  - "migrations/003_gdpr_consent_tables.sql"
+subcategory: "gdpr"
+priority: "critical"
+complexity: "high"
+
+# API compatibility with rust-form framework
+api_compatibility:
+  api_version: "0.1.0"
+  min_version: "0.1.0"
+  max_version: "0.2.0"
+  required_features:
+    - "sqlx-postgres"
+    - "compliance-framework"
+    - "audit-logging"
+  experimental: false
+
+dependencies:
+  rust:
+    - "sqlx = { version = \"0.7\", features = [\"postgres\", \"chrono\", \"uuid\"] }"
+    - "tokio = { version = \"1.0\", features = [\"full\"] }"
+    - "serde = { version = \"1.0\", features = [\"derive\"] }"
+    - "uuid = { version = \"1.0\", features = [\"v4\", \"serde\"] }"
+    - "chrono = { version = \"0.4\", features = [\"serde\"] }"
+    - "reqwest = { version = \"0.11\", features = [\"json\"] }"
+    - "lettre = \"0.11\""
+    - "handlebars = \"4.0\""
+    - "axum = { version = \"0.7\", features = [\"json\"] }"
+    - "thiserror = \"1.0\""
+    - "tracing = \"0.1\""
+  nix:
+    buildInputs:
+      - "postgresql"
+      - "openssl"
+      - "pkg-config"
+    nativeBuildInputs:
+      - "rustc"
+      - "cargo"
+    devShell:
+      packages:
+        - "rust-analyzer"
+        - "cargo-watch"
+        - "cargo-tarpaulin"
+        - "cargo-audit"
+
+templates:
+  generates:
+    - "handlers/gdpr_rights_handler.rs"
+    - "services/data_subject_service.rs"
+    - "services/data_deletion_service.rs"
+    - "services/data_export_service.rs"
+    - "services/consent_service.rs"
+    - "middleware/gdpr_compliance_middleware.rs"
+    - "models/data_subject_request.rs"
+    - "models/consent_record.rs"
+    - "models/audit_event.rs"
+    - "migrations/001_gdpr_rights_tables.sql"
+    - "migrations/002_gdpr_audit_tables.sql"
+    - "migrations/003_gdpr_consent_tables.sql"
+  requires:
+    - "database.rs"
+    - "error.rs"
+    - "models.rs"
+
+config_schema:
+  dpo_email:
+    type: "string"
+    required: true
+    description: "Data Protection Officer email address"
+  data_controller:
+    type: "string"
+    required: true
+    description: "Legal name of the data controller"
+  response_deadline_days:
+    type: "integer"
+    default: 30
+    description: "Maximum days to respond to data subject requests (GDPR allows 30 days)"
+  auto_verification:
+    type: "boolean"
+    default: false
+    description: "Enable automatic identity verification for low-risk requests"
+  data_export_formats:
+    type: "array"
+    items: "string"
+    default: ["json", "csv", "xml"]
+    description: "Supported data export formats for portability requests"
+  lawful_basis_default:
+    type: "string"
+    enum: ["consent", "contract", "legal_obligation", "vital_interests", "public_task", "legitimate_interests"]
+    default: "consent"
+    description: "Default lawful basis for processing"
+  cross_border_transfers:
+    type: "boolean"
+    default: false
+    description: "Whether the system transfers data outside the EU"
+  automated_decision_making:
+    type: "boolean"
+    default: false
+    description: "Whether the system uses automated decision-making"
+  breach_notification_enabled:
+    type: "boolean"
+    default: true
+    description: "Enable automatic breach detection and notification"
+  email_templates:
+    type: "object"
+    properties:
+      confirmation_template: "string"
+      completion_template: "string"
+      rejection_template: "string"
+      reminder_template: "string"
+    description: "Email template configurations for request notifications"
+
+# Compliance-specific configuration
+compliance:
+  regulation: "GDPR"
+  articles_implemented: ["6", "7", "8", "12", "13", "14", "15", "16", "17", "18", "20", "21", "22", "25", "32", "33", "34"]
+  data_categories:
+    - "personal_identifiers"
+    - "contact_information"  
+    - "financial_data"
+    - "behavioral_data"
+    - "technical_data"
+    - "location_data"
+    - "biometric_data"
+    - "health_data"
+  retention_periods:
+    requests: "6y"
+    audit_logs: "7y"
+    export_files: "30d"
+    consent_records: "indefinite"
+  security_measures:
+    - "encryption_at_rest"
+    - "encryption_in_transit"
+    - "access_logging"
+    - "regular_backups"
+    - "incident_response"
+
+tests:
+  unit:
+    - "test_request_validation"
+    - "test_identity_verification"
+    - "test_data_deletion_logic"
+    - "test_data_export_generation"
+    - "test_consent_validation"
+    - "test_retention_policy_enforcement"
+    - "test_breach_detection"
+  integration:
+    - "test_full_deletion_workflow"
+    - "test_data_export_workflow"
+    - "test_consent_withdrawal_workflow"
+    - "test_notification_system"
+    - "test_audit_trail_generation"
+  compliance:
+    - "test_gdpr_article_15_compliance"    # Right of access
+    - "test_gdpr_article_16_compliance"    # Right to rectification
+    - "test_gdpr_article_17_compliance"    # Right to erasure
+    - "test_gdpr_article_18_compliance"    # Right to restriction
+    - "test_gdpr_article_20_compliance"    # Right to data portability
+    - "test_gdpr_article_21_compliance"    # Right to object
+    - "test_response_time_compliance"      # 30-day response requirement
+    - "test_data_accuracy_requirements"
+    - "test_lawful_basis_tracking"
+    - "test_consent_withdrawal_effectiveness"
+  performance:
+    - "test_large_dataset_deletion"
+    - "test_concurrent_request_processing"
+    - "test_export_generation_performance"
+  security:
+    - "test_data_encryption"
+    - "test_access_controls"
+    - "test_audit_trail_integrity"
+    - "test_secure_data_transmission"
+
+documentation:
+  compliance_guide: true
+  dpo_manual: true
+  api_reference: true
+  implementation_checklist: true
+  privacy_notice_template: true
+  cookie_policy_template: true
+  data_processing_records: true
+  breach_response_procedures: true
+
+# Component features
+features:
+  data_subject_requests:
+    - "automated_request_processing"
+    - "identity_verification"
+    - "multi_format_exports"
+    - "cascading_deletions"
+    - "partial_fulfillment"
+  consent_management:
+    - "granular_consent_tracking"
+    - "consent_withdrawal"
+    - "age_verification"
+    - "parental_consent"
+    - "consent_renewal"
+  audit_and_logging:
+    - "comprehensive_audit_trails"
+    - "data_access_logging"
+    - "consent_change_tracking"
+    - "breach_detection"
+    - "automated_reporting"
+  notifications:
+    - "email_notifications"
+    - "sms_notifications"
+    - "webhook_notifications"
+    - "reminder_systems"
+  integration:
+    - "rest_api"
+    - "webhook_support"
+    - "third_party_integrations"
+    - "data_import_export"

@@ -1,4 +1,4 @@
-use crate::component::schema::ComponentConfig;
+use rustform_core::component::ComponentManifest as ComponentConfig;
 use std::collections::HashMap;
 use tera::{Tera, Context};
 
@@ -25,33 +25,37 @@ impl TestGenerator {
         let mut generated_tests = HashMap::new();
         
         // Generate unit tests
-        for test_name in &config.tests.unit {
-            let test_content = self.generate_unit_test(config, test_name)?;
-            generated_tests.insert(
-                format!("tests/unit_{}.rs", test_name.to_lowercase()),
-                test_content
-            );
-        }
-        
-        // Generate integration tests
-        if let Some(integration_tests) = &config.tests.integration {
-            for test_name in integration_tests {
-                let test_content = self.generate_integration_test(config, test_name)?;
-                generated_tests.insert(
-                    format!("tests/{}.rs", test_name.to_lowercase()),
-                    test_content
-                );
+        if let Some(tests) = &config.tests {
+            if let Some(unit_tests) = &tests.unit {
+                for test_name in unit_tests {
+                    let test_content = self.generate_unit_test(config, test_name)?;
+                    generated_tests.insert(
+                        format!("tests/unit_{}.rs", test_name.to_lowercase()),
+                        test_content
+                    );
+                }
             }
-        }
         
-        // Generate performance tests
-        if let Some(performance_tests) = &config.tests.performance {
-            for test_name in performance_tests {
-                let test_content = self.generate_performance_test(config, test_name)?;
-                generated_tests.insert(
-                    format!("benches/{}.rs", test_name.to_lowercase()),
-                    test_content
-                );
+            // Generate integration tests
+            if let Some(integration_tests) = &tests.integration {
+                for test_name in integration_tests {
+                    let test_content = self.generate_integration_test(config, test_name)?;
+                    generated_tests.insert(
+                        format!("tests/{}.rs", test_name.to_lowercase()),
+                        test_content
+                    );
+                }
+            }
+        
+            // Generate performance tests
+            if let Some(performance_tests) = &tests.performance {
+                for test_name in performance_tests {
+                    let test_content = self.generate_performance_test(config, test_name)?;
+                    generated_tests.insert(
+                        format!("benches/{}.rs", test_name.to_lowercase()),
+                        test_content
+                    );
+                }
             }
         }
         
@@ -132,34 +136,34 @@ impl TestGenerator {
     fn get_unit_test_template(&self, config: &ComponentConfig, test_name: &str) -> String {
         match config.category_str() {
             "auth" => match test_name {
-                name if name.contains("token") => "auth/token_test.rs.tera",
-                name if name.contains("login") => "auth/login_test.rs.tera",
-                name if name.contains("permission") => "auth/permission_test.rs.tera",
-                _ => "auth/generic_auth_test.rs.tera",
+                name if name.contains("token") => "auth/token_test.rs.tera".to_string(),
+                name if name.contains("login") => "auth/login_test.rs.tera".to_string(),
+                name if name.contains("permission") => "auth/permission_test.rs.tera".to_string(),
+                _ => "auth/generic_auth_test.rs.tera".to_string(),
             },
             "database" => match test_name {
-                name if name.contains("connection") => "database/connection_test.rs.tera",
-                name if name.contains("query") => "database/query_test.rs.tera",
-                name if name.contains("migration") => "database/migration_test.rs.tera",
-                _ => "database/generic_db_test.rs.tera",
+                name if name.contains("connection") => "database/connection_test.rs.tera".to_string(),
+                name if name.contains("query") => "database/query_test.rs.tera".to_string(),
+                name if name.contains("migration") => "database/migration_test.rs.tera".to_string(),
+                _ => "database/generic_db_test.rs.tera".to_string(),
             },
             "api" => match test_name {
-                name if name.contains("endpoint") => "api/endpoint_test.rs.tera",
-                name if name.contains("middleware") => "api/middleware_test.rs.tera",
-                name if name.contains("validation") => "api/validation_test.rs.tera",
-                _ => "api/generic_api_test.rs.tera",
+                name if name.contains("endpoint") => "api/endpoint_test.rs.tera".to_string(),
+                name if name.contains("middleware") => "api/middleware_test.rs.tera".to_string(),
+                name if name.contains("validation") => "api/validation_test.rs.tera".to_string(),
+                _ => "api/generic_api_test.rs.tera".to_string(),
             },
-            _ => "generic_unit_test.rs.tera",
+            _ => "generic_unit_test.rs.tera".to_string(),
         }
     }
     
     /// Get appropriate integration test template
     fn get_integration_test_template(&self, config: &ComponentConfig, test_name: &str) -> String {
         match config.category_str() {
-            "auth" => "auth/auth_integration_test.rs.tera",
-            "database" => "database/db_integration_test.rs.tera",
-            "api" => "api/api_integration_test.rs.tera",
-            _ => "generic_integration_test.rs.tera",
+            "auth" => "auth/auth_integration_test.rs.tera".to_string(),
+            "database" => "database/db_integration_test.rs.tera".to_string(),
+            "api" => "api/api_integration_test.rs.tera".to_string(),
+            _ => "generic_integration_test.rs.tera".to_string(),
         }
     }
     
@@ -209,7 +213,9 @@ impl TestGenerator {
         }
         
         // Add component-specific mocks based on templates
-        for template in &config.templates.generates {
+        if let Some(ref template_config) = config.templates {
+            if let Some(ref generates) = template_config.generates {
+                for template in generates {
             if template.contains("email") {
                 mocks.push(MockDependency {
                     name: "MockEmailService".to_string(),
@@ -233,7 +239,9 @@ impl TestGenerator {
                     ],
                 });
             }
+            }
         }
+    }
         
         mocks
     }
