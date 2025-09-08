@@ -22,6 +22,10 @@ thiserror.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+# Configuration parsing
+serde.workspace = true
+serde_yaml.workspace = true
+
 # Internal dependencies
 rustform-core = { path = "../rustform-core" }
 rustform-codegen = { path = "../rustform-codegen" }

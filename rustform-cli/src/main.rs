@@ -1,6 +1,7 @@
 use rustform_cli::run_cli;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    run_cli()?;
+#[tokio::main]
+async fn main() -> miette::Result<()> {
+    run_cli().await?;
     Ok(())
 }
