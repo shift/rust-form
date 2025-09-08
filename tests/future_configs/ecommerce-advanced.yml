@@ -1,0 +1,456 @@
+# Advanced E-commerce Platform Configuration
+# Demonstrates: relationships, validation, pagination, authentication, file uploads
+# Requirements: relationship-handling, validation-integration, advanced-features, file-upload-support
+
+project:
+  name: "ecommerce_platform"
+  description: "Full-featured e-commerce platform with advanced features"
+
+database:
+  type: "postgres"  # Future: PostgreSQL support
+  url_env: "DATABASE_URL"
+  
+server:
+  port: 8080
+  cors:  # Future: configurable CORS
+    origins: ["http://localhost:3000", "https://mystore.com"]
+    methods: ["GET", "POST", "PUT", "DELETE"]
+    headers: ["content-type", "authorization"]
+
+# Future: Authentication configuration
+auth:
+  jwt_secret_env: "JWT_SECRET"
+  token_expiry: "24h"
+  refresh_token_expiry: "7d"
+  password_hash: "argon2"
+
+# Future: File upload configuration  
+uploads:
+  storage: "s3"  # s3, local, cloudinary
+  bucket: "ecommerce-uploads"
+  max_file_size: "10MB"
+  allowed_types: ["image/jpeg", "image/png", "image/webp"]
+
+models:
+  User:
+    fields:
+      id: 
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      email:
+        type: "string"
+        unique: true
+        # Future: validation rules
+        validation:
+          format: "email"
+          message: "Must be a valid email address"
+      password_hash:
+        type: "string"
+        # Future: field security
+        security:
+          exclude_from_response: true
+          hash_algorithm: "argon2"
+      first_name:
+        type: "string"
+        validation:
+          min_length: 1
+          max_length: 50
+          message: "First name must be 1-50 characters"
+      last_name:
+        type: "string"
+        validation:
+          min_length: 1
+          max_length: 50
+      phone:
+        type: "string"
+        optional: true
+        validation:
+          pattern: "^\\+?[1-9]\\d{1,14}$"
+          message: "Must be a valid phone number"
+      role:
+        type: "enum"
+        values: ["customer", "admin", "vendor"]
+        default: "customer"
+      is_verified:
+        type: "boolean"
+        default: false
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  Category:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      name:
+        type: "string"
+        unique: true
+        validation:
+          min_length: 2
+          max_length: 100
+      slug:
+        type: "string"
+        unique: true
+        # Future: auto-generation from name
+        auto_generate: "slug_from_name"
+      description:
+        type: "text"
+        optional: true
+      image_url:
+        type: "string"
+        optional: true
+        # Future: file upload field
+        upload_field: true
+      parent_id:
+        type: "uuid"
+        optional: true
+        # Future: self-referencing relationship
+        references: "Category.id"
+        on_delete: "SET_NULL"
+      is_active:
+        type: "boolean"
+        default: true
+      display_order:
+        type: "i32"
+        default: 0
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  Product:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      name:
+        type: "string"
+        validation:
+          min_length: 2
+          max_length: 200
+      slug:
+        type: "string"
+        unique: true
+        auto_generate: "slug_from_name"
+      description:
+        type: "text"
+        validation:
+          min_length: 10
+          max_length: 5000
+      short_description:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 500
+      sku:
+        type: "string"
+        unique: true
+        validation:
+          pattern: "^[A-Z0-9-]+$"
+          message: "SKU must contain only uppercase letters, numbers, and hyphens"
+      price:
+        type: "decimal"
+        # Future: decimal precision
+        precision: 2
+        validation:
+          min: 0.01
+          message: "Price must be greater than $0.00"
+      compare_price:
+        type: "decimal"
+        optional: true
+        precision: 2
+      cost_price:
+        type: "decimal"
+        optional: true
+        precision: 2
+        # Future: access control
+        access_control:
+          read: ["admin", "vendor"]
+          write: ["admin", "vendor"]
+      category_id:
+        type: "uuid"
+        references: "Category.id"
+        on_delete: "RESTRICT"
+      vendor_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      weight:
+        type: "decimal"
+        optional: true
+        precision: 3
+      dimensions:
+        type: "json"
+        optional: true
+        # Future: JSON schema validation
+        schema:
+          properties:
+            length: { type: "number" }
+            width: { type: "number" }
+            height: { type: "number" }
+            unit: { type: "string", enum: ["in", "cm"] }
+      inventory_quantity:
+        type: "i32"
+        default: 0
+        validation:
+          min: 0
+      track_inventory:
+        type: "boolean"
+        default: true
+      allow_backorder:
+        type: "boolean"
+        default: false
+      is_published:
+        type: "boolean"
+        default: false
+      is_featured:
+        type: "boolean"
+        default: false
+      tags:
+        type: "json"
+        optional: true
+        # Future: array type
+        array_of: "string"
+      meta_title:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 60
+      meta_description:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 160
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  ProductImage:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      product_id:
+        type: "uuid"
+        references: "Product.id"
+        on_delete: "CASCADE"
+      image_url:
+        type: "string"
+        upload_field: true
+      alt_text:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 200
+      display_order:
+        type: "i32"
+        default: 0
+      is_primary:
+        type: "boolean"
+        default: false
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  Order:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      order_number:
+        type: "string"
+        unique: true
+        # Future: auto-generation
+        auto_generate: "order_number"
+      customer_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "RESTRICT"
+      status:
+        type: "enum"
+        values: ["pending", "processing", "shipped", "delivered", "cancelled", "refunded"]
+        default: "pending"
+      payment_status:
+        type: "enum"
+        values: ["pending", "paid", "failed", "refunded"]
+        default: "pending"
+      subtotal:
+        type: "decimal"
+        precision: 2
+      tax_amount:
+        type: "decimal"
+        precision: 2
+        default: 0.00
+      shipping_amount:
+        type: "decimal"
+        precision: 2
+        default: 0.00
+      discount_amount:
+        type: "decimal"
+        precision: 2
+        default: 0.00
+      total_amount:
+        type: "decimal"
+        precision: 2
+      currency:
+        type: "string"
+        default: "USD"
+        validation:
+          length: 3
+          pattern: "^[A-Z]{3}$"
+      shipping_address:
+        type: "json"
+        schema:
+          properties:
+            street: { type: "string" }
+            city: { type: "string" }
+            state: { type: "string" }
+            postal_code: { type: "string" }
+            country: { type: "string" }
+      billing_address:
+        type: "json"
+        schema:
+          properties:
+            street: { type: "string" }
+            city: { type: "string" }
+            state: { type: "string" }
+            postal_code: { type: "string" }
+            country: { type: "string" }
+      notes:
+        type: "text"
+        optional: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  OrderItem:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      order_id:
+        type: "uuid"
+        references: "Order.id"
+        on_delete: "CASCADE"
+      product_id:
+        type: "uuid"
+        references: "Product.id"
+        on_delete: "RESTRICT"
+      quantity:
+        type: "i32"
+        validation:
+          min: 1
+      unit_price:
+        type: "decimal"
+        precision: 2
+      total_price:
+        type: "decimal"
+        precision: 2
+        # Future: computed fields
+        computed: "quantity * unit_price"
+      product_snapshot:
+        type: "json"
+        # Store product details at time of order
+        optional: true
+
+# Future: API endpoint configuration
+endpoints:
+  User:
+    create:
+      path: "/auth/register"
+      public: true
+      validation: "strict"
+    login:
+      path: "/auth/login"
+      public: true
+      method: "POST"
+      custom_handler: true
+    list:
+      path: "/admin/users"
+      access_control: ["admin"]
+      pagination: true
+      filters: ["role", "is_verified"]
+      sort_by: ["created_at", "email"]
+
+  Product:
+    list:
+      path: "/products"
+      public: true
+      pagination: true
+      filters: ["category_id", "is_published", "price_range"]
+      search_fields: ["name", "description"]
+      sort_by: ["created_at", "price", "name"]
+    create:
+      access_control: ["admin", "vendor"]
+      validation: "strict"
+
+  Order:
+    list:
+      pagination: true
+      access_control: ["admin"]
+      filters: ["status", "payment_status", "customer_id"]
+    create:
+      access_control: ["customer", "admin"]
+      custom_validation: "order_validation"
+
+# Future: Background jobs configuration
+jobs:
+  inventory_update:
+    schedule: "0 */6 * * *"  # Every 6 hours
+    handler: "update_inventory_levels"
+  order_fulfillment:
+    queue: "high_priority"
+    handler: "process_order_fulfillment"
+  email_notifications:
+    queue: "notifications"
+    handler: "send_order_notifications"
+
+# Future: Caching configuration
+cache:
+  redis_url_env: "REDIS_URL"
+  default_ttl: 3600
+  policies:
+    products: 7200  # 2 hours
+    categories: 86400  # 24 hours
+    user_sessions: 3600  # 1 hour
+
+# Future: Search configuration
+search:
+  engine: "elasticsearch"  # elasticsearch, algolia, typesense
+  indices:
+    products:
+      fields: ["name", "description", "tags"]
+      boost:
+        name: 2.0
+        description: 1.0
+      filters: ["category_id", "price", "is_published"]
+
+# Future: Analytics and monitoring
+monitoring:
+  metrics:
+    - "order_conversion_rate"
+    - "average_order_value"
+    - "inventory_turnover"
+    - "user_registration_rate"
+  alerts:
+    low_inventory:
+      threshold: 10
+      notify: ["admin@ecommerce.com"]
+    failed_payments:
+      threshold: 5
+      window: "1h"

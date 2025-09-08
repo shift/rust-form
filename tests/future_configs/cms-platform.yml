@@ -1,0 +1,741 @@
+# Content Management System (CMS) Configuration
+# Demonstrates: complex validation, versioning, workflows, permissions, content hierarchy
+# Requirements: validation-integration, versioning-support, workflow-engine, permission-system
+
+project:
+  name: "cms_platform"
+  description: "Enterprise content management system with advanced publishing workflows"
+
+database:
+  type: "postgres"
+  url_env: "DATABASE_URL"
+
+server:
+  port: 8080
+
+# Future: Multi-tenant support
+tenancy:
+  enabled: true
+  strategy: "schema"  # schema, database, subdomain
+  default_tenant: "default"
+
+# Future: Advanced permission system
+permissions:
+  strategy: "rbac"  # rbac, acl, custom
+  hierarchical: true
+  cache_ttl: 3600
+
+models:
+  Tenant:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      name:
+        type: "string"
+        unique: true
+        validation:
+          min_length: 2
+          max_length: 100
+          pattern: "^[a-zA-Z0-9\\s-]+$"
+      slug:
+        type: "string"
+        unique: true
+        auto_generate: "slug_from_name"
+      domain:
+        type: "string"
+        optional: true
+        unique: true
+        validation:
+          format: "domain"
+      settings:
+        type: "json"
+        default: "{}"
+        # Future: JSON schema validation
+        schema:
+          properties:
+            theme: { type: "string" }
+            locale: { type: "string", default: "en" }
+            timezone: { type: "string", default: "UTC" }
+            features:
+              type: "object"
+              properties:
+                comments: { type: "boolean", default: true }
+                ratings: { type: "boolean", default: false }
+                social_sharing: { type: "boolean", default: true }
+      is_active:
+        type: "boolean"
+        default: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  User:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      tenant_id:
+        type: "uuid"
+        references: "Tenant.id"
+        on_delete: "CASCADE"
+      email:
+        type: "string"
+        validation:
+          format: "email"
+          custom_validator: "unique_per_tenant"
+      username:
+        type: "string"
+        validation:
+          min_length: 3
+          max_length: 30
+          pattern: "^[a-zA-Z0-9_-]+$"
+          custom_validator: "unique_per_tenant"
+      password_hash:
+        type: "string"
+        security:
+          exclude_from_response: true
+          hash_algorithm: "argon2"
+      first_name:
+        type: "string"
+        validation:
+          min_length: 1
+          max_length: 50
+          sanitize: "strip_html"
+      last_name:
+        type: "string"
+        validation:
+          min_length: 1
+          max_length: 50
+          sanitize: "strip_html"
+      avatar_url:
+        type: "string"
+        optional: true
+        upload_field: true
+        validation:
+          file_types: ["image/jpeg", "image/png", "image/webp"]
+          max_size: "2MB"
+      bio:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+          sanitize: "basic_html"
+      role:
+        type: "enum"
+        values: ["super_admin", "admin", "editor", "author", "contributor", "subscriber"]
+        default: "subscriber"
+      permissions:
+        type: "json"
+        default: "[]"
+        # Future: Permission array validation
+        array_of: "string"
+        validation:
+          items:
+            enum: [
+              "content.create", "content.edit", "content.publish", "content.delete",
+              "media.upload", "media.manage",
+              "users.manage", "settings.manage",
+              "analytics.view", "comments.moderate"
+            ]
+      is_active:
+        type: "boolean"
+        default: true
+      email_verified_at:
+        type: "datetime"
+        optional: true
+      last_login_at:
+        type: "datetime"
+        optional: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  ContentType:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      tenant_id:
+        type: "uuid"
+        references: "Tenant.id"
+        on_delete: "CASCADE"
+      name:
+        type: "string"
+        validation:
+          min_length: 2
+          max_length: 100
+      slug:
+        type: "string"
+        auto_generate: "slug_from_name"
+        validation:
+          custom_validator: "unique_per_tenant"
+      description:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+      icon:
+        type: "string"
+        optional: true
+        validation:
+          pattern: "^[a-z-]+$"  # CSS icon class names
+      # Future: Dynamic field definitions
+      field_definitions:
+        type: "json"
+        default: "[]"
+        schema:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              name: { type: "string" }
+              type: { type: "string", enum: ["text", "textarea", "rich_text", "number", "boolean", "date", "image", "file"] }
+              label: { type: "string" }
+              required: { type: "boolean", default: false }
+              validation: { type: "object" }
+              help_text: { type: "string" }
+              default_value: { type: "string" }
+      # Future: Workflow configuration
+      workflow:
+        type: "json"
+        default: "{}"
+        schema:
+          properties:
+            enabled: { type: "boolean", default: false }
+            states:
+              type: "array"
+              items:
+                type: "object"
+                properties:
+                  name: { type: "string" }
+                  label: { type: "string" }
+                  color: { type: "string" }
+                  permissions: { type: "array", items: { type: "string" } }
+            transitions:
+              type: "array"
+              items:
+                type: "object"
+                properties:
+                  from: { type: "string" }
+                  to: { type: "string" }
+                  permissions: { type: "array", items: { type: "string" } }
+      is_system:
+        type: "boolean"
+        default: false
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  Content:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      tenant_id:
+        type: "uuid"
+        references: "Tenant.id"
+        on_delete: "CASCADE"
+      content_type_id:
+        type: "uuid"
+        references: "ContentType.id"
+        on_delete: "RESTRICT"
+      title:
+        type: "string"
+        validation:
+          min_length: 1
+          max_length: 200
+          sanitize: "strip_html"
+      slug:
+        type: "string"
+        validation:
+          pattern: "^[a-z0-9-]+$"
+          custom_validator: "unique_per_tenant_and_type"
+      excerpt:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+          sanitize: "basic_html"
+      content:
+        type: "text"
+        validation:
+          min_length: 1
+          max_length: 100000
+          sanitize: "rich_html"
+          # Future: Content validation rules
+          custom_validators:
+            - "no_malicious_scripts"
+            - "valid_internal_links"
+            - "required_seo_elements"
+      # Future: Dynamic field storage
+      custom_fields:
+        type: "json"
+        default: "{}"
+        # Validated against ContentType.field_definitions
+      status:
+        type: "enum"
+        values: ["draft", "pending_review", "scheduled", "published", "archived", "deleted"]
+        default: "draft"
+      visibility:
+        type: "enum"
+        values: ["public", "private", "password_protected", "members_only"]
+        default: "public"
+      password:
+        type: "string"
+        optional: true
+        security:
+          exclude_from_response: true
+      author_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "SET_NULL"
+      editor_id:
+        type: "uuid"
+        optional: true
+        references: "User.id"
+        on_delete: "SET_NULL"
+      parent_id:
+        type: "uuid"
+        optional: true
+        references: "Content.id"
+        on_delete: "CASCADE"
+        # Future: Hierarchical content structure
+      menu_order:
+        type: "i32"
+        default: 0
+      featured_image_id:
+        type: "uuid"
+        optional: true
+        references: "Media.id"
+        on_delete: "SET_NULL"
+      # Future: SEO fields
+      seo_title:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 60
+      seo_description:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 160
+      seo_keywords:
+        type: "json"
+        optional: true
+        array_of: "string"
+      canonical_url:
+        type: "string"
+        optional: true
+        validation:
+          format: "url"
+      # Future: Publishing schedule
+      published_at:
+        type: "datetime"
+        optional: true
+      scheduled_at:
+        type: "datetime"
+        optional: true
+      expires_at:
+        type: "datetime"
+        optional: true
+      # Future: Analytics
+      view_count:
+        type: "i64"
+        default: 0
+      share_count:
+        type: "i32"
+        default: 0
+      comment_count:
+        type: "i32"
+        default: 0
+        computed: "count(comments.where(approved = true))"
+      # Future: Content scoring
+      quality_score:
+        type: "decimal"
+        optional: true
+        precision: 2
+        validation:
+          min: 0.0
+          max: 10.0
+      readability_score:
+        type: "decimal"
+        optional: true
+        precision: 2
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  ContentRevision:
+    # Future: Version control for content
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      content_id:
+        type: "uuid"
+        references: "Content.id"
+        on_delete: "CASCADE"
+      revision_number:
+        type: "i32"
+      title:
+        type: "string"
+      content:
+        type: "text"
+      custom_fields:
+        type: "json"
+        default: "{}"
+      change_summary:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+      author_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "SET_NULL"
+      # Future: Diff tracking
+      changes:
+        type: "json"
+        default: "{}"
+        schema:
+          properties:
+            added: { type: "array", items: { type: "string" } }
+            removed: { type: "array", items: { type: "string" } }
+            modified: { type: "array", items: { type: "object" } }
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  Category:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      tenant_id:
+        type: "uuid"
+        references: "Tenant.id"
+        on_delete: "CASCADE"
+      name:
+        type: "string"
+        validation:
+          min_length: 1
+          max_length: 100
+          custom_validator: "unique_per_tenant"
+      slug:
+        type: "string"
+        auto_generate: "slug_from_name"
+      description:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 1000
+          sanitize: "basic_html"
+      parent_id:
+        type: "uuid"
+        optional: true
+        references: "Category.id"
+        on_delete: "CASCADE"
+      image_id:
+        type: "uuid"
+        optional: true
+        references: "Media.id"
+        on_delete: "SET_NULL"
+      color:
+        type: "string"
+        optional: true
+        validation:
+          pattern: "^#[0-9A-Fa-f]{6}$"
+      display_order:
+        type: "i32"
+        default: 0
+      content_count:
+        type: "i32"
+        default: 0
+        computed: "count(content_categories.content)"
+      is_visible:
+        type: "boolean"
+        default: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  ContentCategory:
+    # Future: Many-to-many relationship
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      content_id:
+        type: "uuid"
+        references: "Content.id"
+        on_delete: "CASCADE"
+      category_id:
+        type: "uuid"
+        references: "Category.id"
+        on_delete: "CASCADE"
+      is_primary:
+        type: "boolean"
+        default: false
+      created_at:
+        type: "datetime"
+        default: "now()"
+    
+    constraints:
+      unique: ["content_id", "category_id"]
+
+  Media:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      tenant_id:
+        type: "uuid"
+        references: "Tenant.id"
+        on_delete: "CASCADE"
+      filename:
+        type: "string"
+        validation:
+          max_length: 255
+      original_filename:
+        type: "string"
+        validation:
+          max_length: 255
+      title:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 200
+      alt_text:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 200
+      caption:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 1000
+      file_url:
+        type: "string"
+        upload_field: true
+      file_type:
+        type: "string"
+        validation:
+          enum: [
+            "image/jpeg", "image/png", "image/webp", "image/gif",
+            "video/mp4", "video/webm",
+            "application/pdf", "text/plain",
+            "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          ]
+      file_size:
+        type: "i64"
+        validation:
+          max: 104857600  # 100MB
+      width:
+        type: "i32"
+        optional: true
+      height:
+        type: "i32"
+        optional: true
+      duration:
+        type: "i32"
+        optional: true
+      # Future: Image processing variants
+      variants:
+        type: "json"
+        default: "{}"
+        schema:
+          properties:
+            thumbnail: { type: "string" }
+            medium: { type: "string" }
+            large: { type: "string" }
+      uploaded_by:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "SET_NULL"
+      # Future: Media organization
+      folder_path:
+        type: "string"
+        default: "/"
+        validation:
+          pattern: "^(/[a-zA-Z0-9_-]+)*/$"
+      tags:
+        type: "json"
+        default: "[]"
+        array_of: "string"
+      usage_count:
+        type: "i32"
+        default: 0
+        computed: "count(content.where(featured_image_id = id))"
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  Comment:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      content_id:
+        type: "uuid"
+        references: "Content.id"
+        on_delete: "CASCADE"
+      parent_id:
+        type: "uuid"
+        optional: true
+        references: "Comment.id"
+        on_delete: "CASCADE"
+      author_name:
+        type: "string"
+        validation:
+          min_length: 1
+          max_length: 100
+          sanitize: "strip_html"
+      author_email:
+        type: "string"
+        validation:
+          format: "email"
+      author_url:
+        type: "string"
+        optional: true
+        validation:
+          format: "url"
+      author_ip:
+        type: "string"
+        security:
+          exclude_from_response: true
+      content:
+        type: "text"
+        validation:
+          min_length: 1
+          max_length: 5000
+          sanitize: "basic_html"
+          # Future: Comment moderation
+          profanity_filter: true
+          spam_detection: true
+      status:
+        type: "enum"
+        values: ["pending", "approved", "spam", "trash"]
+        default: "pending"
+      user_agent:
+        type: "string"
+        optional: true
+        security:
+          exclude_from_response: true
+      # Future: Comment voting
+      upvotes:
+        type: "i32"
+        default: 0
+      downvotes:
+        type: "i32"
+        default: 0
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+# Future: Complex validation rules
+validation_rules:
+  content_quality:
+    - name: "minimum_word_count"
+      target: "Content.content"
+      rule: "word_count >= 100"
+      message: "Content must be at least 100 words"
+    - name: "seo_title_present"
+      target: "Content"
+      rule: "seo_title.present? || title.length <= 60"
+      message: "SEO title required for long titles"
+  
+  media_compliance:
+    - name: "image_dimensions"
+      target: "Media"
+      rule: "width <= 4096 && height <= 4096"
+      message: "Images must not exceed 4096x4096 pixels"
+
+# Future: Workflow definitions
+workflows:
+  editorial:
+    name: "Editorial Review Process"
+    states:
+      - { name: "draft", label: "Draft", color: "#gray" }
+      - { name: "pending_review", label: "Pending Review", color: "#yellow" }
+      - { name: "approved", label: "Approved", color: "#green" }
+      - { name: "rejected", label: "Rejected", color: "#red" }
+      - { name: "published", label: "Published", color: "#blue" }
+    
+    transitions:
+      - { from: "draft", to: "pending_review", permissions: ["content.edit"] }
+      - { from: "pending_review", to: "approved", permissions: ["content.publish"] }
+      - { from: "pending_review", to: "rejected", permissions: ["content.publish"] }
+      - { from: "approved", to: "published", permissions: ["content.publish"] }
+      - { from: "rejected", to: "draft", permissions: ["content.edit"] }
+
+# Future: Advanced endpoint configurations
+endpoints:
+  Content:
+    search:
+      path: "/search"
+      method: "GET"
+      public: true
+      filters: ["content_type", "category", "status", "date_range"]
+      search_fields: ["title", "content", "excerpt"]
+      facets: ["content_type", "categories", "author"]
+      
+  Media:
+    upload:
+      path: "/media/upload"
+      method: "POST"
+      max_file_size: "100MB"
+      allowed_types: ["image/*", "video/*", "application/pdf"]
+      processing:
+        - resize: { width: 1200, height: 800, quality: 85 }
+        - thumbnail: { width: 300, height: 200 }
+
+# Future: Content scheduling
+scheduler:
+  publish_scheduled_content:
+    cron: "* * * * *"  # Every minute
+    handler: "publish_scheduled_content"
+  
+  expire_content:
+    cron: "0 0 * * *"  # Daily at midnight
+    handler: "expire_old_content"
+
+# Future: Content analysis
+analysis:
+  readability:
+    enabled: true
+    target_score: 60
+  seo:
+    enabled: true
+    checks: ["title_length", "meta_description", "heading_structure"]
+  performance:
+    image_optimization: true
+    lazy_loading: true

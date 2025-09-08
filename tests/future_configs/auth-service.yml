@@ -1,0 +1,698 @@
+# Authentication & Authorization Service Configuration
+# Demonstrates: security features, JWT, OAuth2, multi-factor auth, session management
+# Requirements: auth-system, oauth2-integration, mfa-support, session-management
+
+project:
+  name: "auth_service"
+  description: "Comprehensive authentication and authorization microservice"
+
+database:
+  type: "postgres"
+  url_env: "DATABASE_URL"
+
+server:
+  port: 8080
+  # Future: Security headers configuration
+  security:
+    cors:
+      origins: ["https://app.example.com", "https://admin.example.com"]
+      credentials: true
+    headers:
+      x_frame_options: "DENY"
+      x_content_type_options: "nosniff"
+      x_xss_protection: "1; mode=block"
+      strict_transport_security: "max-age=31536000; includeSubDomains"
+
+# Future: JWT configuration
+jwt:
+  secret_env: "JWT_SECRET"
+  issuer: "auth.example.com"
+  audience: ["api.example.com", "app.example.com"]
+  access_token_ttl: "15m"
+  refresh_token_ttl: "7d"
+  algorithm: "HS256"
+
+# Future: OAuth2 provider configuration
+oauth2:
+  providers:
+    google:
+      client_id_env: "GOOGLE_CLIENT_ID"
+      client_secret_env: "GOOGLE_CLIENT_SECRET"
+      redirect_uri: "https://auth.example.com/oauth/google/callback"
+      scopes: ["email", "profile"]
+    github:
+      client_id_env: "GITHUB_CLIENT_ID"
+      client_secret_env: "GITHUB_CLIENT_SECRET"
+      redirect_uri: "https://auth.example.com/oauth/github/callback"
+      scopes: ["user:email"]
+    microsoft:
+      client_id_env: "MICROSOFT_CLIENT_ID"
+      client_secret_env: "MICROSOFT_CLIENT_SECRET"
+      redirect_uri: "https://auth.example.com/oauth/microsoft/callback"
+      scopes: ["openid", "profile", "email"]
+
+# Future: Multi-factor authentication
+mfa:
+  totp:
+    enabled: true
+    issuer: "AuthService"
+    digits: 6
+    window: 1
+  sms:
+    enabled: true
+    provider: "twilio"
+    template: "Your verification code is: {code}"
+  email:
+    enabled: true
+    template: "email_verification"
+
+# Future: Password policy
+password_policy:
+  min_length: 8
+  max_length: 128
+  require_uppercase: true
+  require_lowercase: true
+  require_numbers: true
+  require_symbols: true
+  forbidden_passwords: ["password", "123456", "qwerty"]
+  history_limit: 5
+  expiry_days: 90
+
+models:
+  User:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      email:
+        type: "string"
+        unique: true
+        validation:
+          format: "email"
+          max_length: 255
+          message: "Must be a valid email address"
+      username:
+        type: "string"
+        unique: true
+        optional: true
+        validation:
+          min_length: 3
+          max_length: 30
+          pattern: "^[a-zA-Z0-9_-]+$"
+          message: "Username can only contain letters, numbers, underscores, and hyphens"
+      password_hash:
+        type: "string"
+        security:
+          exclude_from_response: true
+          hash_algorithm: "argon2"
+      first_name:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 50
+          sanitize: "strip_html"
+      last_name:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 50
+          sanitize: "strip_html"
+      display_name:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      avatar_url:
+        type: "string"
+        optional: true
+        validation:
+          format: "url"
+      phone:
+        type: "string"
+        optional: true
+        validation:
+          pattern: "^\\+?[1-9]\\d{1,14}$"
+          message: "Must be a valid international phone number"
+      # Future: User status and verification
+      status:
+        type: "enum"
+        values: ["active", "inactive", "suspended", "pending_verification"]
+        default: "pending_verification"
+      email_verified:
+        type: "boolean"
+        default: false
+      email_verified_at:
+        type: "datetime"
+        optional: true
+      phone_verified:
+        type: "boolean"
+        default: false
+      phone_verified_at:
+        type: "datetime"
+        optional: true
+      # Future: Multi-factor authentication
+      mfa_enabled:
+        type: "boolean"
+        default: false
+      mfa_secret:
+        type: "string"
+        optional: true
+        security:
+          exclude_from_response: true
+          encrypt: true
+      mfa_backup_codes:
+        type: "json"
+        optional: true
+        security:
+          exclude_from_response: true
+          encrypt: true
+        array_of: "string"
+      # Future: Security tracking
+      failed_login_attempts:
+        type: "i32"
+        default: 0
+      locked_until:
+        type: "datetime"
+        optional: true
+      last_login_at:
+        type: "datetime"
+        optional: true
+      last_login_ip:
+        type: "string"
+        optional: true
+        security:
+          exclude_from_response: true
+      password_changed_at:
+        type: "datetime"
+        default: "now()"
+      # Future: Profile and preferences
+      locale:
+        type: "string"
+        default: "en"
+        validation:
+          pattern: "^[a-z]{2}(-[A-Z]{2})?$"
+      timezone:
+        type: "string"
+        default: "UTC"
+      metadata:
+        type: "json"
+        default: "{}"
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  OAuthAccount:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      provider:
+        type: "enum"
+        values: ["google", "github", "microsoft", "facebook", "twitter"]
+      provider_account_id:
+        type: "string"
+        validation:
+          max_length: 255
+      provider_username:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 255
+      provider_email:
+        type: "string"
+        optional: true
+        validation:
+          format: "email"
+      access_token:
+        type: "text"
+        optional: true
+        security:
+          exclude_from_response: true
+          encrypt: true
+      refresh_token:
+        type: "text"
+        optional: true
+        security:
+          exclude_from_response: true
+          encrypt: true
+      token_expires_at:
+        type: "datetime"
+        optional: true
+      profile_data:
+        type: "json"
+        default: "{}"
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+    
+    constraints:
+      unique: ["provider", "provider_account_id"]
+
+  Session:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      session_token:
+        type: "string"
+        unique: true
+        security:
+          exclude_from_response: true
+      # Future: Enhanced session tracking
+      device_fingerprint:
+        type: "string"
+        optional: true
+        security:
+          exclude_from_response: true
+      user_agent:
+        type: "text"
+        optional: true
+      ip_address:
+        type: "string"
+        security:
+          exclude_from_response: true
+      location:
+        type: "json"
+        optional: true
+        schema:
+          properties:
+            country: { type: "string" }
+            city: { type: "string" }
+            latitude: { type: "number" }
+            longitude: { type: "number" }
+      # Future: Session management
+      is_active:
+        type: "boolean"
+        default: true
+      expires_at:
+        type: "datetime"
+      last_accessed_at:
+        type: "datetime"
+        default: "now()"
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  RefreshToken:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      token_hash:
+        type: "string"
+        unique: true
+        security:
+          exclude_from_response: true
+      session_id:
+        type: "uuid"
+        references: "Session.id"
+        on_delete: "CASCADE"
+      is_revoked:
+        type: "boolean"
+        default: false
+      expires_at:
+        type: "datetime"
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  Role:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      name:
+        type: "string"
+        unique: true
+        validation:
+          min_length: 2
+          max_length: 50
+          pattern: "^[a-z_]+$"
+      display_name:
+        type: "string"
+        validation:
+          max_length: 100
+      description:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+      # Future: Hierarchical roles
+      parent_id:
+        type: "uuid"
+        optional: true
+        references: "Role.id"
+        on_delete: "SET_NULL"
+      level:
+        type: "i32"
+        default: 0
+      is_system:
+        type: "boolean"
+        default: false
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  Permission:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      name:
+        type: "string"
+        unique: true
+        validation:
+          min_length: 2
+          max_length: 100
+          pattern: "^[a-z_:]+$"
+          message: "Permission names should use format: resource:action (e.g., user:read)"
+      display_name:
+        type: "string"
+        validation:
+          max_length: 100
+      description:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+      resource:
+        type: "string"
+        validation:
+          max_length: 50
+      action:
+        type: "string"
+        validation:
+          max_length: 50
+      is_system:
+        type: "boolean"
+        default: false
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  UserRole:
+    # Future: Many-to-many with additional metadata
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      role_id:
+        type: "uuid"
+        references: "Role.id"
+        on_delete: "CASCADE"
+      granted_by:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "SET_NULL"
+      granted_at:
+        type: "datetime"
+        default: "now()"
+      expires_at:
+        type: "datetime"
+        optional: true
+      is_active:
+        type: "boolean"
+        default: true
+    
+    constraints:
+      unique: ["user_id", "role_id"]
+
+  RolePermission:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      role_id:
+        type: "uuid"
+        references: "Role.id"
+        on_delete: "CASCADE"
+      permission_id:
+        type: "uuid"
+        references: "Permission.id"
+        on_delete: "CASCADE"
+      created_at:
+        type: "datetime"
+        default: "now()"
+    
+    constraints:
+      unique: ["role_id", "permission_id"]
+
+  UserPermission:
+    # Future: Direct user permissions (overrides)
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      permission_id:
+        type: "uuid"
+        references: "Permission.id"
+        on_delete: "CASCADE"
+      granted:
+        type: "boolean"
+        default: true
+        # false = explicitly denied (overrides role permissions)
+      granted_by:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "SET_NULL"
+      granted_at:
+        type: "datetime"
+        default: "now()"
+      expires_at:
+        type: "datetime"
+        optional: true
+    
+    constraints:
+      unique: ["user_id", "permission_id"]
+
+  PasswordReset:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      token_hash:
+        type: "string"
+        unique: true
+        security:
+          exclude_from_response: true
+      is_used:
+        type: "boolean"
+        default: false
+      expires_at:
+        type: "datetime"
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  EmailVerification:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      email:
+        type: "string"
+        validation:
+          format: "email"
+      token_hash:
+        type: "string"
+        unique: true
+        security:
+          exclude_from_response: true
+      is_verified:
+        type: "boolean"
+        default: false
+      attempts:
+        type: "i32"
+        default: 0
+      expires_at:
+        type: "datetime"
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  AuditLog:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        optional: true
+        references: "User.id"
+        on_delete: "SET_NULL"
+      action:
+        type: "enum"
+        values: [
+          "user_created", "user_updated", "user_deleted",
+          "login_success", "login_failed", "logout",
+          "password_changed", "password_reset_requested", "password_reset_completed",
+          "email_verified", "mfa_enabled", "mfa_disabled",
+          "role_assigned", "role_removed", "permission_granted", "permission_revoked",
+          "session_created", "session_terminated",
+          "oauth_linked", "oauth_unlinked"
+        ]
+      resource_type:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 50
+      resource_id:
+        type: "uuid"
+        optional: true
+      # Future: Detailed change tracking
+      changes:
+        type: "json"
+        optional: true
+        schema:
+          properties:
+            before: { type: "object" }
+            after: { type: "object" }
+            fields_changed: { type: "array", items: { type: "string" } }
+      ip_address:
+        type: "string"
+        optional: true
+      user_agent:
+        type: "text"
+        optional: true
+      metadata:
+        type: "json"
+        default: "{}"
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+# Future: API endpoint configurations for auth flows
+endpoints:
+  auth:
+    register:
+      path: "/auth/register"
+      method: "POST"
+      public: true
+      rate_limit: "5/minute"
+      validation: "strict"
+      
+    login:
+      path: "/auth/login"
+      method: "POST"
+      public: true
+      rate_limit: "10/minute"
+      custom_handler: true
+      
+    logout:
+      path: "/auth/logout"
+      method: "POST"
+      auth_required: true
+      
+    refresh:
+      path: "/auth/refresh"
+      method: "POST"
+      public: true
+      rate_limit: "20/minute"
+      
+    verify_email:
+      path: "/auth/verify-email"
+      method: "POST"
+      public: true
+      rate_limit: "3/minute"
+      
+    reset_password:
+      path: "/auth/reset-password"
+      method: "POST"
+      public: true
+      rate_limit: "3/minute"
+      
+    change_password:
+      path: "/auth/change-password"
+      method: "POST"
+      auth_required: true
+      
+    enable_mfa:
+      path: "/auth/mfa/enable"
+      method: "POST"
+      auth_required: true
+      
+    verify_mfa:
+      path: "/auth/mfa/verify"
+      method: "POST"
+      auth_required: true
+
+  oauth:
+    authorize:
+      path: "/oauth/{provider}/authorize"
+      method: "GET"
+      public: true
+      
+    callback:
+      path: "/oauth/{provider}/callback"
+      method: "GET"
+      public: true
+
+# Future: Security policies
+security:
+  session_timeout: "30m"
+  max_sessions_per_user: 5
+  lockout_threshold: 5
+  lockout_duration: "15m"
+  password_reset_ttl: "1h"
+  email_verification_ttl: "24h"
+  
+# Future: Notification templates
+notifications:
+  email_verification:
+    subject: "Verify your email address"
+    template: "email_verification.html"
+  password_reset:
+    subject: "Reset your password"
+    template: "password_reset.html"
+  security_alert:
+    subject: "Security Alert - New Login"
+    template: "security_alert.html"

@@ -1,0 +1,790 @@
+# Inventory Management System Configuration
+# Demonstrates: real-time updates, complex calculations, batch operations, reporting
+# Requirements: real-time-support, computed-fields, batch-processing, reporting-engine
+
+project:
+  name: "inventory_management"
+  description: "Advanced inventory management system with real-time tracking and analytics"
+
+database:
+  type: "postgres"
+  url_env: "DATABASE_URL"
+
+server:
+  port: 8080
+
+# Future: Real-time configuration
+realtime:
+  enabled: true
+  redis_url_env: "REDIS_URL"
+  channels:
+    - "inventory_updates"
+    - "stock_alerts"
+    - "order_fulfillment"
+
+# Future: Batch processing configuration
+batch_processing:
+  queue_system: "redis"
+  max_batch_size: 1000
+  processing_interval: "5m"
+  retry_attempts: 3
+
+models:
+  Warehouse:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      name:
+        type: "string"
+        validation:
+          min_length: 2
+          max_length: 100
+      code:
+        type: "string"
+        unique: true
+        validation:
+          min_length: 2
+          max_length: 10
+          pattern: "^[A-Z0-9]+$"
+          message: "Warehouse code must be uppercase letters and numbers only"
+      address:
+        type: "json"
+        schema:
+          properties:
+            street: { type: "string" }
+            city: { type: "string" }
+            state: { type: "string" }
+            postal_code: { type: "string" }
+            country: { type: "string" }
+      # Future: Geographic coordinates for logistics
+      coordinates:
+        type: "json"
+        optional: true
+        schema:
+          properties:
+            latitude: { type: "number", minimum: -90, maximum: 90 }
+            longitude: { type: "number", minimum: -180, maximum: 180 }
+      manager_name:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      contact_email:
+        type: "string"
+        optional: true
+        validation:
+          format: "email"
+      contact_phone:
+        type: "string"
+        optional: true
+        validation:
+          pattern: "^\\+?[1-9]\\d{1,14}$"
+      is_active:
+        type: "boolean"
+        default: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  Category:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      name:
+        type: "string"
+        validation:
+          min_length: 2
+          max_length: 100
+      code:
+        type: "string"
+        unique: true
+        validation:
+          pattern: "^[A-Z0-9-]+$"
+      description:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+      parent_id:
+        type: "uuid"
+        optional: true
+        references: "Category.id"
+        on_delete: "SET_NULL"
+      # Future: Tax and compliance settings
+      tax_rate:
+        type: "decimal"
+        optional: true
+        precision: 4
+        validation:
+          min: 0.0
+          max: 1.0
+      # Future: Automatic reorder settings
+      default_reorder_point:
+        type: "i32"
+        optional: true
+        validation:
+          min: 0
+      default_reorder_quantity:
+        type: "i32"
+        optional: true
+        validation:
+          min: 1
+      is_active:
+        type: "boolean"
+        default: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  Supplier:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      name:
+        type: "string"
+        validation:
+          min_length: 2
+          max_length: 200
+      code:
+        type: "string"
+        unique: true
+        validation:
+          pattern: "^[A-Z0-9-]+$"
+      contact_person:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      email:
+        type: "string"
+        optional: true
+        validation:
+          format: "email"
+      phone:
+        type: "string"
+        optional: true
+        validation:
+          pattern: "^\\+?[1-9]\\d{1,14}$"
+      address:
+        type: "json"
+        optional: true
+        schema:
+          properties:
+            street: { type: "string" }
+            city: { type: "string" }
+            state: { type: "string" }
+            postal_code: { type: "string" }
+            country: { type: "string" }
+      tax_id:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 50
+      # Future: Supplier rating and performance
+      rating:
+        type: "decimal"
+        optional: true
+        precision: 2
+        validation:
+          min: 0.0
+          max: 5.0
+      # Future: Payment terms
+      payment_terms:
+        type: "json"
+        default: "{}"
+        schema:
+          properties:
+            net_days: { type: "integer", minimum: 0 }
+            discount_days: { type: "integer", minimum: 0 }
+            discount_percentage: { type: "number", minimum: 0, maximum: 100 }
+      is_active:
+        type: "boolean"
+        default: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  Product:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      name:
+        type: "string"
+        validation:
+          min_length: 2
+          max_length: 200
+      sku:
+        type: "string"
+        unique: true
+        validation:
+          min_length: 3
+          max_length: 50
+          pattern: "^[A-Z0-9-]+$"
+      barcode:
+        type: "string"
+        optional: true
+        unique: true
+        validation:
+          pattern: "^[0-9]{8,13}$"
+          message: "Barcode must be 8-13 digits"
+      description:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 2000
+      category_id:
+        type: "uuid"
+        references: "Category.id"
+        on_delete: "RESTRICT"
+      # Future: Product specifications
+      specifications:
+        type: "json"
+        default: "{}"
+        schema:
+          properties:
+            weight: { type: "number", minimum: 0 }
+            dimensions:
+              type: "object"
+              properties:
+                length: { type: "number", minimum: 0 }
+                width: { type: "number", minimum: 0 }
+                height: { type: "number", minimum: 0 }
+                unit: { type: "string", enum: ["cm", "in"] }
+            color: { type: "string" }
+            material: { type: "string" }
+            brand: { type: "string" }
+            model: { type: "string" }
+      # Future: Pricing information
+      unit_cost:
+        type: "decimal"
+        optional: true
+        precision: 2
+        validation:
+          min: 0.0
+      unit_price:
+        type: "decimal"
+        optional: true
+        precision: 2
+        validation:
+          min: 0.0
+      # Future: Inventory settings per product
+      track_inventory:
+        type: "boolean"
+        default: true
+      allow_backorder:
+        type: "boolean"
+        default: false
+      reorder_point:
+        type: "i32"
+        default: 10
+        validation:
+          min: 0
+      reorder_quantity:
+        type: "i32"
+        default: 50
+        validation:
+          min: 1
+      max_stock_level:
+        type: "i32"
+        optional: true
+        validation:
+          min: 1
+      # Future: Product lifecycle
+      status:
+        type: "enum"
+        values: ["active", "discontinued", "phase_out", "new"]
+        default: "active"
+      # Future: Computed fields for analytics
+      total_stock:
+        type: "i32"
+        default: 0
+        computed: "sum(inventory_items.quantity)"
+      total_value:
+        type: "decimal"
+        precision: 2
+        computed: "sum(inventory_items.quantity * inventory_items.unit_cost)"
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  InventoryItem:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      product_id:
+        type: "uuid"
+        references: "Product.id"
+        on_delete: "CASCADE"
+      warehouse_id:
+        type: "uuid"
+        references: "Warehouse.id"
+        on_delete: "CASCADE"
+      quantity:
+        type: "i32"
+        default: 0
+        validation:
+          min: 0
+      # Future: Location tracking within warehouse
+      location:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 50
+          pattern: "^[A-Z0-9-]+$"
+          message: "Location format: ZONE-AISLE-SHELF (e.g., A-01-03)"
+      # Future: Batch/Lot tracking
+      batch_number:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 50
+      lot_number:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 50
+      expiry_date:
+        type: "date"
+        optional: true
+      # Future: Cost tracking (FIFO, LIFO, Average)
+      unit_cost:
+        type: "decimal"
+        precision: 4
+        validation:
+          min: 0.0
+      total_cost:
+        type: "decimal"
+        precision: 2
+        computed: "quantity * unit_cost"
+      # Future: Reserved quantity (allocated but not shipped)
+      reserved_quantity:
+        type: "i32"
+        default: 0
+        validation:
+          min: 0
+      available_quantity:
+        type: "i32"
+        computed: "quantity - reserved_quantity"
+      # Future: Quality control
+      quality_status:
+        type: "enum"
+        values: ["good", "damaged", "expired", "quarantine"]
+        default: "good"
+      last_counted_at:
+        type: "datetime"
+        optional: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+    
+    constraints:
+      unique: ["product_id", "warehouse_id", "batch_number", "lot_number"]
+
+  StockMovement:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      inventory_item_id:
+        type: "uuid"
+        references: "InventoryItem.id"
+        on_delete: "CASCADE"
+      movement_type:
+        type: "enum"
+        values: [
+          "receipt", "shipment", "transfer_in", "transfer_out",
+          "adjustment_positive", "adjustment_negative", "return",
+          "damage", "expiry", "cycle_count"
+        ]
+      quantity:
+        type: "i32"
+        validation:
+          not_equal: 0
+          message: "Quantity cannot be zero"
+      # Future: Reference tracking
+      reference_type:
+        type: "enum"
+        values: ["purchase_order", "sales_order", "transfer_order", "adjustment", "manual"]
+        optional: true
+      reference_id:
+        type: "uuid"
+        optional: true
+      # Future: Cost impact tracking
+      unit_cost:
+        type: "decimal"
+        optional: true
+        precision: 4
+      total_cost_impact:
+        type: "decimal"
+        optional: true
+        precision: 2
+      notes:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 1000
+      # Future: User tracking
+      performed_by:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  PurchaseOrder:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      po_number:
+        type: "string"
+        unique: true
+        auto_generate: "po_number"
+      supplier_id:
+        type: "uuid"
+        references: "Supplier.id"
+        on_delete: "RESTRICT"
+      warehouse_id:
+        type: "uuid"
+        references: "Warehouse.id"
+        on_delete: "RESTRICT"
+      status:
+        type: "enum"
+        values: ["draft", "sent", "confirmed", "partially_received", "completed", "cancelled"]
+        default: "draft"
+      order_date:
+        type: "date"
+        default: "today()"
+      expected_date:
+        type: "date"
+        optional: true
+      # Future: Financial tracking
+      subtotal:
+        type: "decimal"
+        precision: 2
+        default: 0.00
+      tax_amount:
+        type: "decimal"
+        precision: 2
+        default: 0.00
+      shipping_amount:
+        type: "decimal"
+        precision: 2
+        default: 0.00
+      total_amount:
+        type: "decimal"
+        precision: 2
+        computed: "subtotal + tax_amount + shipping_amount"
+      currency:
+        type: "string"
+        default: "USD"
+        validation:
+          length: 3
+          pattern: "^[A-Z]{3}$"
+      notes:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 2000
+      created_by:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  PurchaseOrderItem:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      purchase_order_id:
+        type: "uuid"
+        references: "PurchaseOrder.id"
+        on_delete: "CASCADE"
+      product_id:
+        type: "uuid"
+        references: "Product.id"
+        on_delete: "RESTRICT"
+      quantity_ordered:
+        type: "i32"
+        validation:
+          min: 1
+      quantity_received:
+        type: "i32"
+        default: 0
+        validation:
+          min: 0
+      quantity_remaining:
+        type: "i32"
+        computed: "quantity_ordered - quantity_received"
+      unit_cost:
+        type: "decimal"
+        precision: 4
+        validation:
+          min: 0.0
+      total_cost:
+        type: "decimal"
+        precision: 2
+        computed: "quantity_ordered * unit_cost"
+      notes:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  StockAlert:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      product_id:
+        type: "uuid"
+        references: "Product.id"
+        on_delete: "CASCADE"
+      warehouse_id:
+        type: "uuid"
+        references: "Warehouse.id"
+        on_delete: "CASCADE"
+      alert_type:
+        type: "enum"
+        values: ["low_stock", "out_of_stock", "overstock", "expiry_warning", "damaged_goods"]
+      severity:
+        type: "enum"
+        values: ["low", "medium", "high", "critical"]
+        default: "medium"
+      message:
+        type: "text"
+        validation:
+          max_length: 500
+      # Future: Alert thresholds
+      threshold_value:
+        type: "i32"
+        optional: true
+      current_value:
+        type: "i32"
+        optional: true
+      is_acknowledged:
+        type: "boolean"
+        default: false
+      acknowledged_by:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      acknowledged_at:
+        type: "datetime"
+        optional: true
+      is_resolved:
+        type: "boolean"
+        default: false
+      resolved_at:
+        type: "datetime"
+        optional: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  CycleCount:
+    # Future: Physical inventory counting
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      count_number:
+        type: "string"
+        unique: true
+        auto_generate: "cycle_count_number"
+      warehouse_id:
+        type: "uuid"
+        references: "Warehouse.id"
+        on_delete: "RESTRICT"
+      status:
+        type: "enum"
+        values: ["planned", "in_progress", "completed", "cancelled"]
+        default: "planned"
+      count_type:
+        type: "enum"
+        values: ["full", "partial", "category", "location", "abc_analysis"]
+      scheduled_date:
+        type: "date"
+      started_at:
+        type: "datetime"
+        optional: true
+      completed_at:
+        type: "datetime"
+        optional: true
+      # Future: Count criteria
+      criteria:
+        type: "json"
+        default: "{}"
+        schema:
+          properties:
+            categories: { type: "array", items: { type: "string" } }
+            locations: { type: "array", items: { type: "string" } }
+            products: { type: "array", items: { type: "string" } }
+      notes:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 1000
+      performed_by:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  CycleCountItem:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      cycle_count_id:
+        type: "uuid"
+        references: "CycleCount.id"
+        on_delete: "CASCADE"
+      inventory_item_id:
+        type: "uuid"
+        references: "InventoryItem.id"
+        on_delete: "CASCADE"
+      system_quantity:
+        type: "i32"
+      counted_quantity:
+        type: "i32"
+        optional: true
+      variance:
+        type: "i32"
+        computed: "counted_quantity - system_quantity"
+      # Future: Variance analysis
+      variance_percentage:
+        type: "decimal"
+        precision: 2
+        computed: "(variance / system_quantity) * 100"
+      variance_cost_impact:
+        type: "decimal"
+        precision: 2
+        optional: true
+      status:
+        type: "enum"
+        values: ["pending", "counted", "adjusted", "exception"]
+        default: "pending"
+      notes:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+      counted_by:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      counted_at:
+        type: "datetime"
+        optional: true
+
+# Future: Advanced reporting configurations
+reports:
+  inventory_valuation:
+    schedule: "daily"
+    parameters: ["warehouse_id", "category_id", "date_range"]
+    format: ["pdf", "excel", "csv"]
+    
+  stock_movement:
+    schedule: "weekly"
+    parameters: ["product_id", "movement_type", "date_range"]
+    
+  abc_analysis:
+    schedule: "monthly"
+    algorithm: "revenue_based"  # revenue_based, quantity_based, margin_based
+    
+  reorder_report:
+    schedule: "daily"
+    threshold: "below_reorder_point"
+    auto_create_po: false
+
+# Future: Automation rules
+automation:
+  reorder_alerts:
+    enabled: true
+    check_frequency: "hourly"
+    notification_channels: ["email", "webhook"]
+    
+  auto_purchase_orders:
+    enabled: false
+    criteria: "critical_stock_only"
+    approval_required: true
+    
+  expiry_notifications:
+    enabled: true
+    warning_days: [30, 7, 1]
+    
+# Future: Integration endpoints
+integrations:
+  erp_sync:
+    enabled: false
+    endpoint: "https://erp.company.com/api/inventory"
+    sync_frequency: "15m"
+    
+  barcode_scanner:
+    enabled: true
+    validation: "strict"
+    auto_create_products: false
+
+# Future: Analytics and KPIs
+analytics:
+  kpis:
+    - "inventory_turnover"
+    - "stockout_rate" 
+    - "carrying_cost"
+    - "order_accuracy"
+    - "cycle_count_accuracy"
+  
+  dashboards:
+    - name: "inventory_overview"
+      refresh_interval: "5m"
+    - name: "warehouse_performance"
+      refresh_interval: "1h"

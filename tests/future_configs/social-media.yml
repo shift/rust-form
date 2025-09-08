@@ -1,0 +1,642 @@
+# Social Media Platform Configuration
+# Demonstrates: complex relationships, many-to-many, graph queries, real-time features
+# Requirements: relationship-handling, real-time-support, graph-queries, media-processing
+
+project:
+  name: "social_network"
+  description: "Full-featured social media platform with real-time updates"
+
+database:
+  type: "postgres"
+  url_env: "DATABASE_URL"
+  # Future: Read replicas for scaling
+  read_replicas:
+    - "POSTGRES_READ_REPLICA_1"
+    - "POSTGRES_READ_REPLICA_2"
+
+server:
+  port: 8080
+  # Future: WebSocket support for real-time features
+  websocket:
+    enabled: true
+    path: "/ws"
+    heartbeat_interval: 30
+
+# Future: Real-time configuration
+realtime:
+  redis_url_env: "REDIS_URL"
+  channels:
+    - "user_notifications"
+    - "direct_messages" 
+    - "live_feed_updates"
+  
+# Future: Media processing
+media:
+  storage: "s3"
+  processing:
+    image_resize: true
+    video_transcoding: true
+    thumbnail_generation: true
+  cdn_url: "https://cdn.socialmedia.com"
+
+models:
+  User:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      username:
+        type: "string"
+        unique: true
+        validation:
+          min_length: 3
+          max_length: 30
+          pattern: "^[a-zA-Z0-9_]+$"
+          message: "Username can only contain letters, numbers, and underscores"
+      email:
+        type: "string"
+        unique: true
+        validation:
+          format: "email"
+      password_hash:
+        type: "string"
+        security:
+          exclude_from_response: true
+      first_name:
+        type: "string"
+        validation:
+          max_length: 50
+      last_name:
+        type: "string"
+        validation:
+          max_length: 50
+      display_name:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      bio:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+      avatar_url:
+        type: "string"
+        optional: true
+        upload_field: true
+      cover_image_url:
+        type: "string"
+        optional: true
+        upload_field: true
+      location:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      website:
+        type: "string"
+        optional: true
+        validation:
+          format: "url"
+      birth_date:
+        type: "date"
+        optional: true
+      is_verified:
+        type: "boolean"
+        default: false
+      is_private:
+        type: "boolean"
+        default: false
+      is_active:
+        type: "boolean"
+        default: true
+      last_active_at:
+        type: "datetime"
+        optional: true
+      follower_count:
+        type: "i32"
+        default: 0
+        # Future: computed field from followers relationship
+        computed: "count(followers)"
+      following_count:
+        type: "i32"
+        default: 0
+        computed: "count(following)"
+      post_count:
+        type: "i32"
+        default: 0
+        computed: "count(posts)"
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  Follow:
+    # Future: Many-to-many relationship table
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      follower_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      following_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      status:
+        type: "enum"
+        values: ["pending", "accepted", "blocked"]
+        default: "accepted"
+      created_at:
+        type: "datetime"
+        default: "now()"
+    
+    # Future: Composite unique constraint
+    constraints:
+      unique: ["follower_id", "following_id"]
+    
+    # Future: Relationship definitions
+    relationships:
+      follower:
+        type: "belongs_to"
+        model: "User"
+        foreign_key: "follower_id"
+      following:
+        type: "belongs_to"
+        model: "User"
+        foreign_key: "following_id"
+
+  Post:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      author_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      content:
+        type: "text"
+        validation:
+          max_length: 2000
+          message: "Post content cannot exceed 2000 characters"
+      content_type:
+        type: "enum"
+        values: ["text", "image", "video", "link", "poll"]
+        default: "text"
+      visibility:
+        type: "enum"
+        values: ["public", "followers", "private"]
+        default: "public"
+      reply_to_id:
+        type: "uuid"
+        optional: true
+        references: "Post.id"
+        on_delete: "SET_NULL"
+        # Future: self-referencing for replies/threads
+      repost_of_id:
+        type: "uuid"
+        optional: true
+        references: "Post.id"
+        on_delete: "SET_NULL"
+      location:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      # Future: Geographic data
+      coordinates:
+        type: "json"
+        optional: true
+        schema:
+          properties:
+            latitude: { type: "number", minimum: -90, maximum: 90 }
+            longitude: { type: "number", minimum: -180, maximum: 180 }
+      hashtags:
+        type: "json"
+        optional: true
+        array_of: "string"
+      mentions:
+        type: "json"
+        optional: true
+        array_of: "uuid"
+      like_count:
+        type: "i32"
+        default: 0
+        computed: "count(likes)"
+      comment_count:
+        type: "i32"
+        default: 0
+        computed: "count(comments)"
+      repost_count:
+        type: "i32"
+        default: 0
+        computed: "count(reposts)"
+      view_count:
+        type: "i32"
+        default: 0
+      is_pinned:
+        type: "boolean"
+        default: false
+      # Future: Content moderation
+      moderation_status:
+        type: "enum"
+        values: ["pending", "approved", "flagged", "removed"]
+        default: "approved"
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  PostMedia:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      post_id:
+        type: "uuid"
+        references: "Post.id"
+        on_delete: "CASCADE"
+      media_type:
+        type: "enum"
+        values: ["image", "video", "gif"]
+      media_url:
+        type: "string"
+        upload_field: true
+      thumbnail_url:
+        type: "string"
+        optional: true
+      alt_text:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 200
+      width:
+        type: "i32"
+        optional: true
+      height:
+        type: "i32"
+        optional: true
+      duration:
+        type: "i32"
+        optional: true
+        # Duration in seconds for videos
+      file_size:
+        type: "i64"
+        optional: true
+      display_order:
+        type: "i32"
+        default: 0
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+  Like:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      post_id:
+        type: "uuid"
+        references: "Post.id"
+        on_delete: "CASCADE"
+      reaction_type:
+        type: "enum"
+        values: ["like", "love", "laugh", "angry", "sad"]
+        default: "like"
+      created_at:
+        type: "datetime"
+        default: "now()"
+    
+    constraints:
+      unique: ["user_id", "post_id"]
+
+  Comment:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      author_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      post_id:
+        type: "uuid"
+        references: "Post.id"
+        on_delete: "CASCADE"
+      parent_comment_id:
+        type: "uuid"
+        optional: true
+        references: "Comment.id"
+        on_delete: "CASCADE"
+        # Future: nested comments/replies
+      content:
+        type: "text"
+        validation:
+          max_length: 1000
+      mentions:
+        type: "json"
+        optional: true
+        array_of: "uuid"
+      like_count:
+        type: "i32"
+        default: 0
+      reply_count:
+        type: "i32"
+        default: 0
+        computed: "count(replies)"
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  DirectMessage:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      conversation_id:
+        type: "uuid"
+        references: "Conversation.id"
+        on_delete: "CASCADE"
+      sender_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      content:
+        type: "text"
+        validation:
+          max_length: 5000
+      message_type:
+        type: "enum"
+        values: ["text", "image", "video", "file", "location"]
+        default: "text"
+      media_url:
+        type: "string"
+        optional: true
+        upload_field: true
+      is_read:
+        type: "boolean"
+        default: false
+      read_at:
+        type: "datetime"
+        optional: true
+      # Future: Message reactions
+      reactions:
+        type: "json"
+        optional: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  Conversation:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      type:
+        type: "enum"
+        values: ["direct", "group"]
+        default: "direct"
+      name:
+        type: "string"
+        optional: true
+        validation:
+          max_length: 100
+      description:
+        type: "text"
+        optional: true
+        validation:
+          max_length: 500
+      avatar_url:
+        type: "string"
+        optional: true
+        upload_field: true
+      created_by:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "SET_NULL"
+      last_message_at:
+        type: "datetime"
+        optional: true
+      is_archived:
+        type: "boolean"
+        default: false
+      created_at:
+        type: "datetime"
+        default: "now()"
+      updated_at:
+        type: "datetime"
+        auto_update: true
+
+  ConversationParticipant:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      conversation_id:
+        type: "uuid"
+        references: "Conversation.id"
+        on_delete: "CASCADE"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      role:
+        type: "enum"
+        values: ["member", "admin"]
+        default: "member"
+      joined_at:
+        type: "datetime"
+        default: "now()"
+      left_at:
+        type: "datetime"
+        optional: true
+      is_muted:
+        type: "boolean"
+        default: false
+    
+    constraints:
+      unique: ["conversation_id", "user_id"]
+
+  Notification:
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        default: "gen_random_uuid()"
+      user_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      type:
+        type: "enum"
+        values: ["follow", "like", "comment", "mention", "message", "post"]
+      title:
+        type: "string"
+        validation:
+          max_length: 200
+      content:
+        type: "text"
+        validation:
+          max_length: 1000
+      # Future: Polymorphic relationships
+      related_type:
+        type: "enum"
+        values: ["Post", "Comment", "User", "DirectMessage"]
+      related_id:
+        type: "uuid"
+      actor_id:
+        type: "uuid"
+        references: "User.id"
+        on_delete: "CASCADE"
+      is_read:
+        type: "boolean"
+        default: false
+      read_at:
+        type: "datetime"
+        optional: true
+      created_at:
+        type: "datetime"
+        default: "now()"
+
+# Future: GraphQL-style relationship definitions
+relationships:
+  User:
+    posts:
+      type: "has_many"
+      model: "Post"
+      foreign_key: "author_id"
+    followers:
+      type: "has_many"
+      model: "Follow"
+      foreign_key: "following_id"
+      through: "User"
+      source: "follower_id"
+    following:
+      type: "has_many"
+      model: "Follow"
+      foreign_key: "follower_id"
+      through: "User"
+      source: "following_id"
+    likes:
+      type: "has_many"
+      model: "Like"
+      foreign_key: "user_id"
+    notifications:
+      type: "has_many"
+      model: "Notification"
+      foreign_key: "user_id"
+
+  Post:
+    author:
+      type: "belongs_to"
+      model: "User"
+      foreign_key: "author_id"
+    likes:
+      type: "has_many"
+      model: "Like"
+      foreign_key: "post_id"
+    comments:
+      type: "has_many"
+      model: "Comment"
+      foreign_key: "post_id"
+    media:
+      type: "has_many"
+      model: "PostMedia"
+      foreign_key: "post_id"
+    replies:
+      type: "has_many"
+      model: "Post"
+      foreign_key: "reply_to_id"
+
+# Future: Advanced endpoint configurations
+endpoints:
+  User:
+    feed:
+      path: "/users/:id/feed"
+      method: "GET"
+      # Future: Advanced query capabilities
+      includes: ["posts.author", "posts.media", "posts.likes"]
+      filters: ["following_only", "date_range"]
+      pagination: true
+      real_time: true
+    
+  Post:
+    create:
+      validation: "strict"
+      # Future: Custom middleware
+      middleware: ["auth", "rate_limit", "content_moderation"]
+      hooks:
+        after_create: ["notify_followers", "process_media", "extract_hashtags"]
+    
+    timeline:
+      path: "/timeline"
+      method: "GET"
+      # Future: Algorithm-based feed
+      algorithm: "chronological"  # chronological, relevance, hybrid
+      includes: ["author", "media", "reactions"]
+      real_time: true
+
+# Future: Search configuration with advanced features
+search:
+  engine: "elasticsearch"
+  indices:
+    users:
+      fields: ["username", "display_name", "bio"]
+      boost:
+        username: 3.0
+        display_name: 2.0
+    posts:
+      fields: ["content", "hashtags"]
+      filters: ["author_id", "visibility", "created_at"]
+      highlight: true
+    hashtags:
+      fields: ["name"]
+      autocomplete: true
+
+# Future: Content moderation
+moderation:
+  auto_flag:
+    spam_detection: true
+    inappropriate_content: true
+    hate_speech: true
+  review_queue:
+    enabled: true
+    threshold_score: 0.7
+  appeals_process: true
+
+# Future: Analytics and insights
+analytics:
+  user_engagement:
+    track: ["likes", "comments", "shares", "time_spent"]
+  content_performance:
+    track: ["reach", "impressions", "engagement_rate"]
+  trending:
+    hashtags: true
+    posts: true
+    refresh_interval: "5m"
