@@ -1,0 +1,385 @@
+# Rust-form: Declarative, Type-Safe Web Backends in Rust
+
+## Project Overview
+
+Rust-form is a code generation framework that creates complete, production-ready Rust web backends from YAML configuration files. It generates type-safe APIs with database integration, authentication, middleware, and frontend bindings.
+
+## Architecture
+
+The project is organized as a Rust workspace with three main crates:
+- `rustform-cli`: Command-line interface for project management
+- `rustform-core`: Core configuration parsing and validation logic  
+- `rustform-codegen`: Template-based code generation engine
+
+## How to Use Rust-form
+
+### 1. Create a Configuration File
+
+Create a YAML file defining your application structure:
+
+```yaml
+schema_version: "1.0.0"  # Configuration schema version
+api_version: "0.1.0"     # Target rust-form API version
+project_name: my_api
+version: "1.0.0"         # Your application version
+
+database:
+  type: postgres
+  url_env: DATABASE_URL
+
+api:
+  models:
+    User:
+      table_name: users
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        email:
+          type: string
+          required: true
+          unique: true
+        created_at:
+          type: datetime
+          auto_now_add: true
+  
+  endpoints:
+    - path: /users
+      model: User
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+
+middleware:
+  - logger: true
+  - cors:
+      allow_origin: "*"
+```
+
+### 2. Generate Code
+
+```bash
+rustform generate path/to/config.yml
+```
+
+This creates a complete Rust project with:
+- Database models with SQLx integration
+- Axum web server with REST endpoints
+- Type-safe request/response handling
+- Database migrations
+- Frontend TypeScript bindings (if configured)
+
+### 3. Component System
+
+Rust-form supports reusable components for common functionality:
+
+```bash
+# Install a component
+rustform component install auth/jwt-manager
+
+# List available components  
+rustform component list
+
+# Generate component-specific code
+rustform component generate auth
+```
+
+## Key Configuration Sections
+
+### Versioning
+
+Three distinct version types:
+- `schema_version`: Version of the YAML configuration format
+- `api_version`: Compatible rust-form API version
+- `version`: Your application's version
+
+### Database Configuration
+
+Supports SQLite, PostgreSQL, and MySQL:
+
+```yaml
+database:
+  type: postgres
+  url_env: DATABASE_URL
+  pool_size: 20
+  timeout: 30
+```
+
+### Model Definition
+
+```yaml
+api:
+  models:
+    ModelName:
+      table_name: table_name
+      fields:
+        field_name:
+          type: string|integer|boolean|datetime|uuid|json|decimal
+          primary_key: false
+          required: false
+          unique: false
+          max_length: 255
+          default: "value"
+      relationships:
+        relation_name:
+          type: one_to_one|one_to_many|many_to_one|many_to_many
+          model: TargetModel
+          foreign_key: field_name
+      indexes:
+        - name: idx_name
+          fields: [field1, field2]
+          unique: false
+```
+
+### Endpoint Configuration
+
+```yaml
+api:
+  endpoints:
+    - path: /api/path
+      model: ModelName
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+        patch: true
+      auth:
+        type: jwt
+        required: true
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+      filters:
+        - field: field_name
+          type: exact|contains|greaterthan|lessthan
+```
+
+### Middleware
+
+```yaml
+middleware:
+  - logger: true
+  - cors:
+      allow_origin: "*"
+      allow_methods: ["GET", "POST", "PUT", "DELETE"]
+  - rate_limit:
+      max_requests: 1000
+      window_seconds: 3600
+  - compression:
+      gzip: true
+      level: 6
+```
+
+### Frontend Generation
+
+```yaml
+frontend:
+  target: typescript
+  typescript_output_dir: ./frontend/src/generated
+  generate_ui_for: [User, Product]
+  auto_generate_types: true
+  framework_config:
+    react:
+      version: "18"
+      typescript: true
+      state_management: "zustand"
+```
+
+## Development Workflow
+
+### 1. Initial Setup
+
+```bash
+# Create new project
+rustform new my-project
+
+# Or generate from existing config
+rustform generate config.yml
+```
+
+### 2. Development
+
+```bash
+# Build the generated project
+cd generated-project
+cargo build
+
+# Run database migrations  
+cargo run -- migrate
+
+# Start development server
+cargo run
+```
+
+### 3. Component Integration
+
+```bash
+# Add authentication
+rustform component install auth/jwt-manager
+
+# Add observability
+rustform component install observability/prometheus-metrics
+
+# Regenerate with components
+rustform generate config.yml
+```
+
+## CLI Commands
+
+- `rustform new <name>`: Create new project template
+- `rustform generate <config.yml>`: Generate code from configuration
+- `rustform component list`: List available components
+- `rustform component install <uri>`: Install component
+- `rustform validate <config.yml>`: Validate configuration
+- `rustform --help`: Show all available commands
+
+## File Structure
+
+Generated projects follow this structure:
+
+```
+my-project/
+├── src/
+│   ├── main.rs           # Application entry point
+│   ├── models.rs         # Database models
+│   ├── handlers.rs       # Request handlers
+│   ├── database.rs       # Database connection
+│   └── error.rs          # Error handling
+├── migrations/           # Database migrations
+├── frontend/            # Generated frontend code (if enabled)
+├── .env.example         # Environment variables template
+├── Cargo.toml           # Rust dependencies
+└── README.md            # Project documentation
+```
+
+## Advanced Features
+
+### Custom Logic
+
+Add custom business logic:
+
+```yaml
+api:
+  models:
+    User:
+      # ... fields
+      custom_logic:
+        file: "src/user_logic.rs"
+        methods: ["validate_email", "hash_password"]
+        hooks:
+          before_create: "hash_password"
+          after_create: "send_welcome_email"
+```
+
+### Component Development
+
+Create reusable components:
+
+```yaml
+# rustform-component.yml
+name: jwt-auth
+category: auth
+api_compatibility:
+  api_version: "0.1.0"
+  min_version: "0.1.0"
+  max_version: "0.2.0"
+
+templates:
+  - name: auth_handler
+    path: auth/jwt_handler.rs.tera
+  - name: middleware  
+    path: auth/jwt_middleware.rs.tera
+```
+
+### Registry Configuration (Feature Flagged)
+
+```yaml
+# Requires --features registry
+registry:
+  url: "https://components.rustform.dev"
+  auth:
+    type: token
+    credentials: "${RUSTFORM_TOKEN}"
+  cache:
+    enabled: true
+    ttl: 3600
+```
+
+## Environment Setup
+
+Rust-form uses Nix for reproducible development environments:
+
+```bash
+# Enter development shell
+nix develop
+
+# Or with direnv
+echo "use flake" > .envrc
+direnv allow
+```
+
+## Testing
+
+```bash
+# Run all tests
+cargo test
+
+# Test specific configuration
+rustform validate examples/ecommerce.yml
+
+# Test component installation
+rustform component install --dry-run auth/jwt-manager
+```
+
+## Day 2 Operations
+
+### Version Compatibility
+
+- Check `api_version` for compatibility with current rust-form
+- Use `schema_version` for configuration format migrations
+- Monitor application `version` for deployment tracking
+
+### Configuration Migration
+
+When schema versions change:
+
+```bash
+# Check compatibility
+rustform validate --warn-deprecated config.yml
+
+# Migrate to new schema version
+rustform migrate-config config.yml --to 2.0.0
+```
+
+### Troubleshooting
+
+Common issues:
+- Version compatibility: Update `api_version` to match rust-form
+- Schema validation: Check field types and required properties
+- Component conflicts: Verify component compatibility versions
+- Database connections: Ensure environment variables are set
+
+## Examples
+
+See the `examples/` directory for complete configurations:
+- `examples/todo.yml`: Simple CRUD API
+- `examples/ecommerce.yml`: Complex e-commerce backend
+- `examples/blog.yml`: Content management system
+
+## Contributing
+
+1. Check existing component compatibility with `api_version`
+2. Follow semantic versioning for configuration changes
+3. Update `schema_version` for breaking format changes
+4. Add tests for new validation rules
+5. Update this guide for new features
+
+## Getting Help
+
+- GitHub Issues: Report bugs and feature requests
+- Documentation: Check `docs/` for detailed guides
+- Examples: Review `examples/` for usage patterns
+- CLI Help: Run `rustform --help` for command reference

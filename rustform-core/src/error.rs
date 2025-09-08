@@ -168,6 +168,17 @@ pub enum ValidationError {
         help("Remove circular references between models to break the dependency cycle")
     )]
     CircularDependency { cycle: Vec<String> },
+
+    #[error("Incompatible API version '{requested}': current rust-form version is '{current}' ({reason})")]
+    #[diagnostic(
+        code(validation::incompatible_api_version),
+        help("Update your configuration's api_version to match a compatible rust-form version or upgrade rust-form")
+    )]
+    IncompatibleApiVersion { 
+        requested: String, 
+        current: String, 
+        reason: String 
+    },
 }
 
 pub type ValidationResult<T> = std::result::Result<T, ValidationError>;

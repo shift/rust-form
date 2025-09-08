@@ -1,0 +1,56 @@
+schema_version: "1.0.0"
+api_version: "0.1.0"
+project_name: example_with_versioning
+version: "1.0.0"
+
+database:
+  type: postgres
+  url_env: DATABASE_URL
+
+server:
+  host: "127.0.0.1"
+  port: 3000
+
+api:
+  models:
+    User:
+      table_name: users
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        email:
+          type: string
+          required: true
+          unique: true
+          max_length: 255
+        name:
+          type: string
+          required: true
+          max_length: 100
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+
+  endpoints:
+    - path: /users
+      model: User
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+
+middleware:
+  - logger: true
+  - cors:
+      allow_origin: "*"
+      allow_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+      allow_headers: ["Content-Type", "Authorization"]

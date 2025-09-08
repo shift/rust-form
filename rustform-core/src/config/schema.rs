@@ -1,9 +1,27 @@
 use serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
 
+/// Default schema version for new configurations
+fn default_schema_version() -> String {
+    "1.0.0".to_string()
+}
+
+/// Default API version for new configurations  
+fn default_api_version() -> String {
+    "0.1.0".to_string()
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Config {
+    /// Version of the YAML configuration schema format
+    #[serde(default = "default_schema_version")]
+    pub schema_version: String,
+    /// Version of rust-form API this configuration targets
+    #[serde(default = "default_api_version")]
+    pub api_version: String,
+    /// Application project name
     pub project_name: String,
+    /// Application version (SemVer)
     pub version: String,
     pub database: DatabaseConfig,
     pub api: ApiConfig,
@@ -15,6 +33,10 @@ pub struct Config {
     pub frontend: Option<FrontendConfig>,
     #[serde(default)]
     pub components: Option<IndexMap<String, String>>,
+    /// Feature flags for experimental functionality
+    #[serde(default)]
+    #[cfg(feature = "registry")]
+    pub registry: Option<RegistryConfig>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -506,4 +528,58 @@ pub struct CustomValidationConfig {
     pub before_update: Option<String>,
     #[serde(default)]
     pub custom_validators: Vec<String>,
+}
+
+/// Registry configuration for component management
+#[cfg(feature = "registry")]
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct RegistryConfig {
+    /// Registry URL endpoint
+    pub url: String,
+    /// Authentication configuration
+    pub auth: Option<RegistryAuthConfig>,
+    /// Caching configuration
+    #[serde(default)]
+    pub cache: RegistryCacheConfig,
+}
+
+/// Registry authentication configuration
+#[cfg(feature = "registry")]
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct RegistryAuthConfig {
+    /// Authentication type (token, basic, etc.)
+    #[serde(rename = "type")]
+    pub auth_type: String,
+    /// Token or credentials
+    pub credentials: String,
+}
+
+/// Registry caching configuration
+#[cfg(feature = "registry")]
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct RegistryCacheConfig {
+    /// Enable component caching
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Cache TTL in seconds
+    #[serde(default = "default_cache_ttl")]
+    pub ttl: u64,
+    /// Cache directory
+    #[serde(default = "default_cache_dir")]
+    pub directory: String,
+}
+
+#[cfg(feature = "registry")]
+fn default_true() -> bool {
+    true
+}
+
+#[cfg(feature = "registry")]
+fn default_cache_ttl() -> u64 {
+    3600 // 1 hour
+}
+
+#[cfg(feature = "registry")]
+fn default_cache_dir() -> String {
+    ".rustform/cache".to_string()
 }

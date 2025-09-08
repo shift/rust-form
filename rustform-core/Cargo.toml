@@ -10,6 +10,10 @@ description = "Core types and utilities for Rustফর্ম"
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = []
+registry = []
+
 [dependencies]
 # Configuration parsing
 serde.workspace = true

@@ -7,6 +7,25 @@ use indexmap::IndexMap;
 pub fn validate_config(config: &Config) -> ValidationResult<()> {
     let mut errors = Vec::new();
 
+    // Validate schema version
+    if let Err(e) = validate_version(&config.schema_version) {
+        errors.push(ValidationError::InvalidVersion {
+            version: format!("schema_version: {}", config.schema_version),
+        });
+    }
+
+    // Validate API version 
+    if let Err(e) = validate_version(&config.api_version) {
+        errors.push(ValidationError::InvalidVersion {
+            version: format!("api_version: {}", config.api_version),
+        });
+    }
+
+    // Check API compatibility
+    if let Err(e) = validate_api_compatibility(&config.api_version) {
+        errors.push(e);
+    }
+
     // Validate project name
     if let Err(e) = validate_project_name(&config.project_name) {
         errors.push(e);
@@ -445,5 +464,63 @@ fn validate_middleware_config(middleware: &[crate::config::MiddlewareConfig]) ->
         }
     }
 
+    Ok(())
+}
+
+fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
+    // Current rust-form version from workspace
+    const CURRENT_RUSTFORM_VERSION: &str = "0.1.0";
+    
+    // Parse versions for comparison
+    let parse_version = |v: &str| -> Result<(u32, u32, u32), ValidationError> {
+        let parts: Vec<&str> = v.split('.').collect();
+        if parts.len() != 3 {
+            return Err(ValidationError::InvalidVersion {
+                version: v.to_string(),
+            });
+        }
+        
+        let major = parts[0].parse::<u32>().map_err(|_| ValidationError::InvalidVersion {
+            version: v.to_string(),
+        })?;
+        let minor = parts[1].parse::<u32>().map_err(|_| ValidationError::InvalidVersion {
+            version: v.to_string(),
+        })?;
+        let patch = parts[2].parse::<u32>().map_err(|_| ValidationError::InvalidVersion {
+            version: v.to_string(),
+        })?;
+        
+        Ok((major, minor, patch))
+    };
+    
+    let (api_major, api_minor, _) = parse_version(api_version)?;
+    let (current_major, current_minor, _) = parse_version(CURRENT_RUSTFORM_VERSION)?;
+    
+    // Check compatibility rules
+    if api_major > current_major {
+        return Err(ValidationError::IncompatibleApiVersion {
+            requested: api_version.to_string(),
+            current: CURRENT_RUSTFORM_VERSION.to_string(),
+            reason: "Major version too new".to_string(),
+        });
+    }
+    
+    if api_major < current_major {
+        return Err(ValidationError::IncompatibleApiVersion {
+            requested: api_version.to_string(),
+            current: CURRENT_RUSTFORM_VERSION.to_string(),
+            reason: "Major version too old".to_string(),
+        });
+    }
+    
+    // Same major version - check minor version compatibility
+    if api_minor > current_minor {
+        return Err(ValidationError::IncompatibleApiVersion {
+            requested: api_version.to_string(),
+            current: CURRENT_RUSTFORM_VERSION.to_string(),
+            reason: "Minor version too new".to_string(),
+        });
+    }
+    
     Ok(())
 }
