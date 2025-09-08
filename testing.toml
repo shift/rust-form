@@ -1,0 +1,85 @@
+# Test Coverage Configuration
+
+[[bin]]
+name = "rustform"
+path = "src/main.rs"
+
+[dependencies]
+# Testing framework dependencies
+cucumber = { workspace = true }
+proptest = { workspace = true }
+criterion = { workspace = true }
+testcontainers = { workspace = true }
+rstest = { workspace = true }
+mockall = { workspace = true }
+similar-asserts = { workspace = true }
+tempfile = { workspace = true }
+tokio-test = "0.4"
+sha2 = "0.10"
+
+# Internal dependencies
+rustform-core = { path = "rustform-core", features = ["registry"] }
+rustform-codegen = { path = "rustform-codegen" }
+rustform-cli = { path = "rustform-cli" }
+
+[dev-dependencies]
+# Additional test utilities
+tarpaulin = "0.27"
+coverage-helper = "0.2"
+
+[[bench]]
+name = "performance_tests"
+harness = false
+
+[features]
+default = []
+registry = ["rustform-core/registry"]
+integration-tests = []
+property-tests = []
+bdd-tests = []
+
+[package.metadata.tarpaulin]
+# Coverage configuration
+include-tests = true
+exclude-tests = false
+ignore-panics = true
+count = true
+line = true
+branch = true
+out = ["Html", "Xml", "Json"]
+output-dir = "target/coverage/"
+
+# Exclude certain files from coverage
+exclude = [
+    "*/tests/*",
+    "*/benches/*", 
+    "*/examples/*",
+    "target/*"
+]
+
+# Minimum coverage thresholds
+fail-under = 80.0
+
+[package.metadata.coverage]
+# Coverage tool configuration
+minimum-coverage = 80
+exclude-patterns = [
+    "tests/**",
+    "benches/**",
+    "examples/**"
+]
+
+# Test configuration sections
+[package.metadata.testing]
+unit-test-pattern = "tests/**/*_test.rs"
+integration-test-pattern = "tests/integration/**/*.rs"
+property-test-pattern = "tests/property_tests.rs"
+bdd-test-pattern = "tests/cucumber_tests.rs"
+
+# Performance test configuration
+[package.metadata.criterion]
+output-format = "html"
+baseline = "main"
+measurement = "wall-time"
+noise-threshold = 0.02
+confidence-level = 0.95

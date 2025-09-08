@@ -33,3 +33,12 @@ rustform-codegen = { path = "../rustform-codegen" }
 # Utilities
 anyhow.workspace = true
 tokio.workspace = true
+
+[dev-dependencies]
+# Unit testing
+rstest = { workspace = true }
+tempfile = { workspace = true }
+similar-asserts = { workspace = true }
+
+# Test utilities
+tokio-test = "0.4"

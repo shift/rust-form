@@ -49,5 +49,15 @@ flate2 = "1.0"
 sha2 = "0.10"
 hex = "0.4"
 
-# TypeScript generation
-ts-rs = "7.1"
+[dev-dependencies]
+# Unit testing
+rstest = { workspace = true }
+proptest = { workspace = true }
+tempfile = { workspace = true }
+similar-asserts = { workspace = true }
+
+# Mocking
+mockall = { workspace = true }
+
+# Async testing
+tokio-test = "0.4"

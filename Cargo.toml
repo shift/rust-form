@@ -51,3 +51,13 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.10"
 anyhow = "1.0"
+
+# Testing dependencies
+proptest = "1.7"
+cucumber = "0.21"
+testcontainers = "0.25"
+criterion = { version = "0.5", features = ["html_reports"] }
+rstest = "0.21"
+mockall = "0.12"
+tempfile = "3.10"
+similar-asserts = "1.5"

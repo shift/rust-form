@@ -34,5 +34,19 @@ chrono.workspace = true
 indexmap.workspace = true
 
 [dev-dependencies]
+# Unit testing
+rstest = { workspace = true }
+proptest = { workspace = true }
+tempfile = { workspace = true }
+similar-asserts = { workspace = true }
+
+# Integration testing
+testcontainers = { workspace = true }
 tokio = { version = "1.0", features = ["full"] }
-tempfile = "3.0"
+tokio-test = "0.4"
+
+# Mocking
+mockall = { workspace = true }
+
+# Test utilities
+criterion = { workspace = true }
