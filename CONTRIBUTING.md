@@ -1,118 +1,105 @@
-## Contributing to Rustফর্ম
+# Contributing to Rust-form
 
-Thank you for your interest in contributing to Rustফর্ম! This document provides guidelines and information for contributors.
+We welcome contributions to Rust-form! This guide will help you get started.
 
-### 🚀 Quick Start
+## 🚀 Quick Start
 
-1. **Fork and clone the repository**
-   ```bash
-   git clone https://github.com/your-username/rust-form.git
-   cd rust-form
-   ```
+```bash
+git clone https://github.com/rust-form/rust-form.git
+cd rust-form
 
-2. **Set up development environment**
-   ```bash
-   # Using Nix (recommended)
-   nix develop
-   
-   # Or install Rust manually
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
+# Use Nix for development environment (recommended)
+nix develop
 
-3. **Run tests**
-   ```bash
-   cargo test --workspace
-   ```
+# Or install dependencies manually
+cargo install --path rustform-cli
+```
 
-### 🏗️ Development Workflow
+## 🎯 Ways to Contribute
 
-1. **Create a feature branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+### 🐛 Bug Reports
+- Use [GitHub Issues](https://github.com/rust-form/rust-form/issues)
+- Include minimal reproduction case
+- Specify Rust-form version and platform
 
-2. **Make your changes**
-   - Follow the existing code style
-   - Add tests for new functionality
-   - Update documentation as needed
+### ✨ Feature Requests
+- Check [existing issues](https://github.com/rust-form/rust-form/issues)
+- Describe use case and motivation
+- Consider contributing implementation
 
-3. **Test your changes**
-   ```bash
-   cargo test --workspace
-   cargo clippy --all-targets --all-features
-   cargo fmt --all
-   ```
+### 🔧 Code Contributions
 
-4. **Commit and push**
-   ```bash
-   git commit -m "feat: add your feature description"
-   git push origin feature/your-feature-name
-   ```
+#### High-Impact Areas
+1. **Frontend Frameworks** - Add Vue, Svelte, Angular support
+2. **Template Components** - New component types and patterns
+3. **Validation** - Advanced validation rules and integration
+4. **Database Support** - Additional database adapters
+5. **Documentation** - Examples, guides, and API docs
 
-5. **Create a Pull Request**
+#### Development Process
+1. **Fork** the repository
+2. **Create feature branch** from `main`
+3. **Write tests** for new functionality
+4. **Update documentation** if needed
+5. **Submit pull request** with clear description
 
-### 📋 Development Guidelines
+### 📚 Documentation
+- Improve existing guides
+- Add examples and tutorials
+- Write API documentation
+- Create video tutorials
 
-#### Code Style
-- Use `cargo fmt` to format your code
-- Run `cargo clippy` and address all warnings
-- Follow Rust naming conventions
-- Write clear, self-documenting code
+### 🎨 Templates
+- Add new frontend framework support
+- Create backend variants (auth, GraphQL, etc.)
+- Develop component libraries
+- Optimize generated code
 
-#### Testing
-- Add unit tests for new functions
-- Add integration tests for new features
-- Ensure generated code compiles and runs
-- Test with example configurations
+## 🏗️ Architecture
 
-#### Documentation
-- Update README.md if adding user-facing features
-- Add rustdoc comments for public APIs
-- Update architecture docs for significant changes
+```
+rust-form/
+├── rustform-cli/          # CLI interface
+├── rustform-codegen/      # Template engine
+├── rustform-core/         # Core types
+└── components/            # Auto-discovered templates
+```
 
-### 🎯 Areas for Contribution
+## 🧪 Testing
 
-#### 🐛 Bug Fixes
-- Check the [issues](https://github.com/your-org/rust-form/issues) for bugs
-- Look for issues labeled `good first issue`
+```bash
+# Run all tests
+cargo test
 
-#### 🆕 New Features
-- Database support (PostgreSQL, MySQL)
-- Additional field types and validations
-- Middleware implementations
-- Template improvements
+# Test specific crate
+cargo test -p rustform-core
 
-#### 📚 Documentation
-- API documentation
-- Usage examples
-- Tutorial content
-- Architecture guides
+# Integration tests
+cargo test --test integration
 
-#### 🧪 Testing
-- Increase test coverage
-- Add integration tests
-- Performance benchmarks
+# Generate test projects
+rustform generate examples/todo.yml
+cd todo_app && cargo check
+```
 
-### 📝 Pull Request Process
+## 📝 Code Style
 
-1. **Before submitting:**
-   - Ensure your PR has a clear description
-   - Link to related issues
-   - Include tests for new functionality
-   - Update documentation if needed
+- **Format**: `cargo fmt`
+- **Lint**: `cargo clippy`
+- **Documentation**: Use `///` doc comments
+- **Error Handling**: Use `miette` for user-facing errors
 
-2. **PR Requirements:**
-   - All CI checks must pass
-   - Code coverage should not decrease
-   - Generated code must compile and run
-   - Follow the PR template
+## 🎯 Priority Areas
 
-3. **Review process:**
-   - Maintainers will review your PR
-   - Address feedback promptly
-   - Be open to suggestions and changes
+Current development priorities (see [tasks.json](ai/tasks.json)):
 
-### 🏷️ Commit Message Format
+1. **Testing Framework** - Comprehensive test suite
+2. **Enhanced CRUD** - Advanced SQL generation
+3. **Validation Integration** - Field validation rules
+4. **Relationship Handling** - Foreign keys and joins
+5. **Frontend Frameworks** - Vue and Svelte support
+
+## 🏷️ Commit Message Format
 
 We follow conventional commits:
 
@@ -140,29 +127,15 @@ fix(codegen): handle empty model definitions correctly
 docs(readme): update installation instructions
 ```
 
-### 🐛 Reporting Bugs
+## 🔄 Development Environment
 
-1. **Check existing issues** first
-2. **Use the bug report template**
-3. **Provide minimal reproduction case**
-4. **Include environment details**
-
-### 💡 Suggesting Features
-
-1. **Check existing feature requests**
-2. **Use the feature request template**
-3. **Explain the use case clearly**
-4. **Consider implementation complexity**
-
-### 🔄 Development Environment
-
-#### With Nix (Recommended)
+### With Nix (Recommended)
 ```bash
 nix develop
 # All tools and dependencies are available
 ```
 
-#### Manual Setup
+### Manual Setup
 Requirements:
 - Rust 1.70+
 - SQLite development libraries
@@ -178,51 +151,43 @@ export DATABASE_URL="sqlite:rustform_dev.db"
 sqlx database setup
 ```
 
-### 🧪 Testing Strategy
+## 🧪 Testing Strategy
 
-#### Unit Tests
+### Unit Tests
 ```bash
 cargo test --lib
 ```
 
-#### Integration Tests
+### Integration Tests
 ```bash
 cargo test --test integration
 ```
 
-#### Generated Code Testing
+### Generated Code Testing
 ```bash
 # Test code generation
-cargo run -- generate examples/todo.yml --output test-output
-cd test-output
-cargo build
-cargo test
+rustform generate examples/todo.yml --output test-output
+cd test-output && cargo build && cargo test
 ```
 
-### 📊 Project Structure
+## 🌟 Recognition
 
-```
-rust-form/
-├── rustform-cli/           # CLI interface
-├── rustform-codegen/       # Code generation engine
-├── rustform-core/          # Shared types and utilities
-├── templates/              # Code generation templates
-├── examples/               # Example configurations
-├── docs/                   # Documentation
-└── ai/                     # AI task planning (development)
-```
+Contributors are recognized in:
+- README.md contributors section
+- Release notes
+- Project documentation
+- Community Discord
 
-### ❓ Getting Help
+## 📞 Getting Help
 
-- **Discussions**: Use GitHub Discussions for questions
-- **Issues**: Report bugs and request features
-- **Documentation**: Check docs/ directory
-- **Examples**: See examples/ directory
+- **Discord**: [Join our community](https://discord.gg/rust-form)
+- **GitHub Discussions**: For design discussions
+- **Issues**: For bugs and feature requests
 
-### 📄 License
+## 📄 License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-Thank you for contributing to Rustফর্ম! 🦀✨
+**Thank you for making Rust-form better!** 🦀✨
