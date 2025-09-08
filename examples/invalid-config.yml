@@ -1,0 +1,71 @@
+# Test configuration with validation errors for testing
+project_name: ""  # Invalid: empty project name
+version: "not-a-version"  # Invalid: not semver
+
+database:
+  type: invalid_db  # Invalid: unsupported database type
+  url_env: "lowercase_env"  # Invalid: should be uppercase
+
+api:
+  models:
+    User:
+      table_name: users
+      fields:
+        name:
+          type: string
+          auto_increment: true  # Invalid: auto_increment on non-primary key
+          auto_now: true  # Invalid: auto_now on string field
+        
+    Post:
+      table_name: posts  
+      fields:
+        # Missing primary key
+        title:
+          type: string
+          max_length: -1  # Invalid: negative max_length
+        content:
+          type: integer
+          min_length: 10  # Invalid: min_length on integer field
+    
+    Comment:
+      table_name: users  # Invalid: duplicate table name
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        multiple_pk:
+          type: uuid
+          primary_key: true  # Invalid: multiple primary keys
+      
+      relationships:
+        nonexistent:
+          type: one_to_many
+          model: NonExistentModel  # Invalid: model doesn't exist
+          
+      indexes:
+        - name: idx_bad
+          fields: [nonexistent_field]  # Invalid: field doesn't exist
+
+  endpoints:
+    - path: "no-slash"  # Invalid: doesn't start with /
+      model: NonExistentModel  # Invalid: model doesn't exist
+      crud:
+        # No CRUD operations enabled - invalid
+        
+    - path: /duplicate
+      model: User
+      crud:
+        read_all: true
+        
+    - path: /duplicate  # Invalid: duplicate path
+      model: Post
+      crud:
+        read_all: true
+
+middleware:
+  - cors:
+      allow_origin: ""  # Invalid: empty allow_origin
+  
+  - rate_limit:
+      max_requests: 0  # Invalid: must be > 0
+      window_seconds: 0  # Invalid: must be > 0

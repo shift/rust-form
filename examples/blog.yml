@@ -5,6 +5,10 @@ database:
   type: sqlite
   url_env: DATABASE_URL
 
+server:
+  host: "127.0.0.1"
+  port: 3000
+
 api:
   models:
     User:
@@ -16,12 +20,78 @@ api:
         username:
           type: string
           required: true
+          unique: true
+          max_length: 50
+          min_length: 3
         email:
           type: string
           required: true
+          unique: true
+          max_length: 255
+          regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        display_name:
+          type: string
+          max_length: 100
+        bio:
+          type: text
+        avatar_url:
+          type: string
+          max_length: 500
+        is_active:
+          type: boolean
+          default: true
         created_at:
           type: datetime
           auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      
+      indexes:
+        - name: idx_users_username
+          fields: [username]
+          unique: true
+        - name: idx_users_email
+          fields: [email]
+          unique: true
+        - name: idx_users_active
+          fields: [is_active]
+
+    Category:
+      table_name: categories
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        name:
+          type: string
+          required: true
+          unique: true
+          max_length: 100
+        slug:
+          type: string
+          required: true
+          unique: true
+          max_length: 100
+        description:
+          type: text
+        color:
+          type: string
+          max_length: 7
+          regex: "^#[0-9A-Fa-f]{6}$"
+        is_active:
+          type: boolean
+          default: true
+        created_at:
+          type: datetime
+          auto_now_add: true
+      
+      indexes:
+        - name: idx_categories_slug
+          fields: [slug]
+          unique: true
+        - name: idx_categories_active
+          fields: [is_active]
 
     Post:
       table_name: posts
@@ -32,42 +102,156 @@ api:
         title:
           type: string
           required: true
-        content:
+          max_length: 200
+        slug:
           type: string
           required: true
+          unique: true
+          max_length: 200
+        content:
+          type: text
+          required: true
+        excerpt:
+          type: text
         author_id:
+          type: uuid
+          required: true
+        category_id:
           type: uuid
           required: true
         published:
           type: boolean
           default: false
+        featured:
+          type: boolean
+          default: false
+        view_count:
+          type: integer
+          default: 0
+          min_value: 0
+        tags:
+          type: json
+        metadata:
+          type: json
+        published_at:
+          type: datetime
+          nullable: true
         created_at:
           type: datetime
           auto_now_add: true
         updated_at:
           type: datetime
           auto_now: true
+      
+      relationships:
+        author:
+          type: many_to_one
+          model: User
+          foreign_key: author_id
+          on_delete: restrict
+        category:
+          type: many_to_one
+          model: Category
+          foreign_key: category_id
+          on_delete: restrict
+      
+      indexes:
+        - name: idx_posts_author
+          fields: [author_id]
+        - name: idx_posts_category
+          fields: [category_id]
+        - name: idx_posts_slug
+          fields: [slug]
+          unique: true
+        - name: idx_posts_published
+          fields: [published]
+        - name: idx_posts_featured
+          fields: [featured]
+        - name: idx_posts_published_at
+          fields: [published_at]
 
   endpoints:
-    - path: /users
+    - path: /auth/register
       model: User
       crud:
         create: true
+
+    - path: /users
+      model: User
+      crud:
         read_all: true
         read_one: true
         update: true
+        patch: true
         delete: true
+      pagination:
+        default_page_size: 25
+        max_page_size: 100
+      filters:
+        - field: username
+          type: contains
+        - field: is_active
+          type: exact
 
-    - path: /posts
-      model: Post  
+    - path: /categories
+      model: Category
       crud:
         create: true
         read_all: true
         read_one: true
         update: true
+        patch: true
         delete: true
+      pagination:
+        default_page_size: 50
+        max_page_size: 200
+      filters:
+        - field: name
+          type: contains
+        - field: is_active
+          type: exact
+
+    - path: /posts
+      model: Post
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        patch: true
+        delete: true
+      pagination:
+        default_page_size: 15
+        max_page_size: 50
+      filters:
+        - field: title
+          type: contains
+        - field: author_id
+          type: exact
+        - field: category_id
+          type: exact
+        - field: published
+          type: exact
+        - field: featured
+          type: exact
+        - field: published_at
+          type: greaterthanorequal
+        - field: published_at
+          type: lessthanorequal
 
 middleware:
   - logger: true
+  
   - cors:
       allow_origin: "*"
+      allow_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      allow_headers: ["Content-Type", "Authorization"]
+      allow_credentials: false
+  
+  - rate_limit:
+      max_requests: 100
+      window_seconds: 3600
+  
+  - compression:
+      gzip: true
+      level: 6

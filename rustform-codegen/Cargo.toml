@@ -28,3 +28,6 @@ anyhow.workspace = true
 
 # Utilities
 tracing.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+indexmap.workspace = true

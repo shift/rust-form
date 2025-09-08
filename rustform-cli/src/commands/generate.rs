@@ -1,5 +1,5 @@
 use crate::error::CliError;
-use rustform_core::Config;
+use rustform_core::parse_config_file;
 use std::path::PathBuf;
 use tracing::{info, warn};
 
@@ -22,23 +22,29 @@ impl GenerateCommand {
             return Err(CliError::config_not_found(self.config.display().to_string()));
         }
         
-        // Read and parse configuration
-        let config_content = std::fs::read_to_string(&self.config)?;
-        let config: Config = serde_yaml::from_str(&config_content)
+        // Parse and validate configuration using enhanced parser
+        let config = parse_config_file(&self.config)
             .map_err(|e| {
-                let span = (0, config_content.len()).into();
-                CliError::config_error(
-                    rustform_core::ConfigError::Yaml(e),
-                    config_content.clone(),
-                    span
-                )
-            })?;
-        
-        // Validate configuration
-        rustform_core::validate_config(&config)
-            .map_err(|e| {
-                let span = (0, config_content.len()).into();
-                CliError::config_error(e, config_content.clone(), span)
+                // Convert ConfigError to CliError with proper error reporting
+                match e {
+                    rustform_core::ConfigError::Yaml(yaml_error) => {
+                        CliError::config_parse_error(format!(
+                            "YAML syntax error in {}: {}",
+                            self.config.display(),
+                            yaml_error
+                        ))
+                    }
+                    rustform_core::ConfigError::Validation(validation_error) => {
+                        CliError::config_validation_error(format!(
+                            "Configuration validation failed in {}: {}",
+                            self.config.display(),
+                            validation_error
+                        ))
+                    }
+                    rustform_core::ConfigError::Io(io_error) => {
+                        CliError::io_error(io_error)
+                    }
+                }
             })?;
         
         // Determine output directory
@@ -57,8 +63,31 @@ impl GenerateCommand {
         // Generate the project
         info!("Generating project '{}' in: {}", config.project_name, output_dir.display());
         
-        let pipeline = rustform_codegen::GenerationPipeline::new();
-        pipeline.generate()?;
+        let pipeline = rustform_codegen::GenerationPipeline::new()
+            .map_err(|e| CliError::generation_error(format!("Failed to initialize pipeline: {}", e)))?;
+        
+        let generated_project = pipeline.generate(&config, &output_dir)
+            .map_err(|e| CliError::generation_error(format!("Generation failed: {}", e)))?;
+        
+        // Create output directory
+        std::fs::create_dir_all(&output_dir)
+            .map_err(|e| CliError::io_error(e))?;
+        
+        // Write generated files
+        for file in &generated_project.files {
+            let file_path = output_dir.join(&file.path);
+            
+            // Create parent directories if they don't exist
+            if let Some(parent) = file_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| CliError::io_error(e))?;
+            }
+            
+            std::fs::write(&file_path, &file.content)
+                .map_err(|e| CliError::io_error(e))?;
+                
+            info!("Generated: {}", file.path);
+        }
         
         info!("✅ Successfully generated project: {}", config.project_name);
         println!("Generated project '{}' in: {}", config.project_name, output_dir.display());

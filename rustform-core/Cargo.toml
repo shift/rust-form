@@ -36,3 +36,4 @@ anyhow.workspace = true
 
 # Utilities
 tracing.workspace = true
+regex.workspace = true

@@ -10,4 +10,10 @@ pub enum CodeGenError {
     
     #[error("Configuration error: {0}")]
     Config(#[from] rustform_core::ConfigError),
+    
+    #[error("Context error: {0}")]
+    Context(String),
+    
+    #[error("Generation error: {0}")]
+    Generation(String),
 }

@@ -5,6 +5,10 @@ database:
   type: sqlite
   url_env: DATABASE_URL
 
+server:
+  host: "127.0.0.1"
+  port: 3000
+
 api:
   models:
     Todo:
@@ -17,12 +21,33 @@ api:
         title:
           type: string
           required: true
+          max_length: 200
+        description:
+          type: text
         completed:
           type: boolean
           default: false
+        priority:
+          type: string
+          max_length: 10
+          default: "medium"
+        due_date:
+          type: datetime
+          nullable: true
         created_at:
           type: datetime
           auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      
+      indexes:
+        - name: idx_todos_completed
+          fields: [completed]
+        - name: idx_todos_due_date
+          fields: [due_date]
+        - name: idx_todos_created_at
+          fields: [created_at]
 
   endpoints:
     - path: /todos
@@ -32,9 +57,28 @@ api:
         read_all: true
         read_one: true
         update: true
+        patch: true
         delete: true
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+      filters:
+        - field: completed
+          type: exact
+        - field: priority
+          type: exact
+        - field: title
+          type: contains
+        - field: due_date
+          type: greaterthanorequal
+        - field: due_date
+          type: lessthanorequal
 
 middleware:
   - logger: true
+  
   - cors:
       allow_origin: "*"
+      allow_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      allow_headers: ["Content-Type", "Authorization"]
+      allow_credentials: false

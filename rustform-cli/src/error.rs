@@ -51,6 +51,20 @@ pub enum CliError {
     )]
     ConfigNotFound { path: String },
     
+    #[error("Configuration parsing error: {message}")]
+    #[diagnostic(
+        code(rustform::config_parse_error),
+        help("Check your YAML syntax and ensure all required fields are present")
+    )]
+    ConfigParseError { message: String },
+    
+    #[error("Configuration validation error: {message}")]
+    #[diagnostic(
+        code(rustform::config_validation_error),
+        help("Fix the configuration issues listed above")
+    )]
+    ConfigValidationError { message: String },
+    
     #[error("Logging setup error: {0}")]
     #[diagnostic(
         code(rustform::logging_error),
@@ -74,6 +88,22 @@ impl CliError {
     
     pub fn config_not_found(path: impl Into<String>) -> Self {
         Self::ConfigNotFound { path: path.into() }
+    }
+    
+    pub fn config_parse_error(message: impl Into<String>) -> Self {
+        Self::ConfigParseError { message: message.into() }
+    }
+    
+    pub fn config_validation_error(message: impl Into<String>) -> Self {
+        Self::ConfigValidationError { message: message.into() }
+    }
+    
+    pub fn io_error(error: std::io::Error) -> Self {
+        Self::Io(error)
+    }
+    
+    pub fn generation_error(message: impl Into<String>) -> Self {
+        Self::CodeGen(rustform_codegen::CodeGenError::Generation(message.into()))
     }
 }
 

@@ -1,0 +1,417 @@
+project_name: ecommerce_api
+version: "1.0.0"
+
+database:
+  type: postgres
+  url_env: DATABASE_URL
+  pool_size: 20
+  timeout: 30
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+api:
+  prefix: "/api/v1"
+  
+  models:
+    User:
+      table_name: users
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        email:
+          type: string
+          required: true
+          unique: true
+          max_length: 255
+          regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        username:
+          type: string
+          required: true
+          unique: true
+          max_length: 50
+          min_length: 3
+        password_hash:
+          type: string
+          required: true
+          max_length: 255
+        first_name:
+          type: string
+          max_length: 100
+        last_name:
+          type: string
+          max_length: 100
+        is_active:
+          type: boolean
+          default: true
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      
+      indexes:
+        - name: idx_users_email
+          fields: [email]
+          unique: true
+        - name: idx_users_username
+          fields: [username]
+          unique: true
+        - name: idx_users_created_at
+          fields: [created_at]
+
+    Category:
+      table_name: categories
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        name:
+          type: string
+          required: true
+          max_length: 100
+        slug:
+          type: string
+          required: true
+          unique: true
+          max_length: 100
+        description:
+          type: text
+        parent_id:
+          type: uuid
+          nullable: true
+        is_active:
+          type: boolean
+          default: true
+        created_at:
+          type: datetime
+          auto_now_add: true
+      
+      relationships:
+        parent:
+          type: many_to_one
+          model: Category
+          foreign_key: parent_id
+          on_delete: set_null
+        children:
+          type: one_to_many
+          model: Category
+          foreign_key: parent_id
+
+    Product:
+      table_name: products
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        name:
+          type: string
+          required: true
+          max_length: 200
+        slug:
+          type: string
+          required: true
+          unique: true
+          max_length: 200
+        description:
+          type: text
+        price:
+          type: decimal
+          required: true
+          min_value: 0
+        stock_quantity:
+          type: integer
+          required: true
+          min_value: 0
+          default: 0
+        category_id:
+          type: uuid
+          required: true
+        sku:
+          type: string
+          unique: true
+          max_length: 50
+        is_active:
+          type: boolean
+          default: true
+        metadata:
+          type: json
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      
+      relationships:
+        category:
+          type: many_to_one
+          model: Category
+          foreign_key: category_id
+          on_delete: restrict
+      
+      indexes:
+        - name: idx_products_category
+          fields: [category_id]
+        - name: idx_products_sku
+          fields: [sku]
+          unique: true
+        - name: idx_products_price
+          fields: [price]
+        - name: idx_products_active_created
+          fields: [is_active, created_at]
+
+    Order:
+      table_name: orders
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        user_id:
+          type: uuid
+          required: true
+        order_number:
+          type: string
+          required: true
+          unique: true
+          max_length: 50
+        status:
+          type: string
+          required: true
+          max_length: 20
+          default: "pending"
+        total_amount:
+          type: decimal
+          required: true
+          min_value: 0
+        shipping_address:
+          type: json
+          required: true
+        billing_address:
+          type: json
+          required: true
+        notes:
+          type: text
+        created_at:
+          type: datetime
+          auto_now_add: true
+        updated_at:
+          type: datetime
+          auto_now: true
+      
+      relationships:
+        user:
+          type: many_to_one
+          model: User
+          foreign_key: user_id
+          on_delete: restrict
+      
+      indexes:
+        - name: idx_orders_user
+          fields: [user_id]
+        - name: idx_orders_status
+          fields: [status]
+        - name: idx_orders_created
+          fields: [created_at]
+
+    OrderItem:
+      table_name: order_items
+      fields:
+        id:
+          type: uuid
+          primary_key: true
+        order_id:
+          type: uuid
+          required: true
+        product_id:
+          type: uuid
+          required: true
+        quantity:
+          type: integer
+          required: true
+          min_value: 1
+        unit_price:
+          type: decimal
+          required: true
+          min_value: 0
+        total_price:
+          type: decimal
+          required: true
+          min_value: 0
+        created_at:
+          type: datetime
+          auto_now_add: true
+      
+      relationships:
+        order:
+          type: many_to_one
+          model: Order
+          foreign_key: order_id
+          on_delete: cascade
+        product:
+          type: many_to_one
+          model: Product
+          foreign_key: product_id
+          on_delete: restrict
+      
+      indexes:
+        - name: idx_order_items_order
+          fields: [order_id]
+        - name: idx_order_items_product
+          fields: [product_id]
+
+  endpoints:
+    - path: /auth/register
+      model: User
+      crud:
+        create: true
+      auth:
+        type: jwt
+        required: false
+
+    - path: /auth/login
+      model: User
+      crud:
+        read_one: true
+      auth:
+        type: jwt
+        required: false
+
+    - path: /users
+      model: User
+      crud:
+        read_all: true
+        read_one: true
+        update: true
+        patch: true
+        delete: true
+      auth:
+        type: jwt
+        required: true
+      pagination:
+        default_page_size: 25
+        max_page_size: 100
+      filters:
+        - field: email
+          type: exact
+        - field: username
+          type: contains
+        - field: is_active
+          type: exact
+
+    - path: /categories
+      model: Category
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+      auth:
+        type: jwt
+        required: false
+      pagination:
+        default_page_size: 50
+        max_page_size: 200
+      filters:
+        - field: name
+          type: contains
+        - field: parent_id
+          type: exact
+        - field: is_active
+          type: exact
+
+    - path: /products
+      model: Product
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        patch: true
+        delete: true
+      auth:
+        type: jwt
+        required: false
+      pagination:
+        default_page_size: 20
+        max_page_size: 100
+      filters:
+        - field: name
+          type: contains
+        - field: category_id
+          type: exact
+        - field: price
+          type: greaterthan
+        - field: price
+          type: lessthan
+        - field: stock_quantity
+          type: greaterthanorequal
+        - field: is_active
+          type: exact
+
+    - path: /orders
+      model: Order
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        patch: true
+      auth:
+        type: jwt
+        required: true
+      pagination:
+        default_page_size: 10
+        max_page_size: 50
+      filters:
+        - field: user_id
+          type: exact
+        - field: status
+          type: exact
+        - field: created_at
+          type: greaterthanorequal
+        - field: created_at
+          type: lessthanorequal
+
+    - path: /order-items
+      model: OrderItem
+      crud:
+        read_all: true
+        read_one: true
+      auth:
+        type: jwt
+        required: true
+      filters:
+        - field: order_id
+          type: exact
+        - field: product_id
+          type: exact
+
+middleware:
+  - logger: true
+  
+  - cors:
+      allow_origin: "*"
+      allow_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      allow_headers: ["Content-Type", "Authorization"]
+      allow_credentials: false
+      max_age: 3600
+  
+  - rate_limit:
+      max_requests: 1000
+      window_seconds: 3600
+      burst: 100
+  
+  - compression:
+      gzip: true
+      brotli: true
+      level: 6
+  
+  - security:
+      helmet: true
+      content_security_policy: "default-src 'self'"
+      x_frame_options: "DENY"

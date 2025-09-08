@@ -1,8 +1,10 @@
 use sqlx::SqlitePool;
-use crate::error::ConfigError;
+use crate::error::{ConfigError, ValidationError};
 
 pub async fn create_connection_pool(database_url: &str) -> Result<SqlitePool, ConfigError> {
     SqlitePool::connect(database_url)
         .await
-        .map_err(|e| ConfigError::Validation(format!("Database connection failed: {}", e)))
+        .map_err(|e| ConfigError::Validation(ValidationError::InvalidMiddleware { 
+            reason: format!("Database connection failed: {}", e) 
+        }))
 }

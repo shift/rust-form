@@ -1,0 +1,61 @@
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::Json,
+};
+use serde::Deserialize;
+use crate::{AppState, AppError{% for model in models %}, {{ model.struct_name }}, Create{{ model.struct_name }}, Update{{ model.struct_name }}{% endfor %}};
+
+#[derive(Debug, Deserialize)]
+pub struct PaginationQuery {
+    pub page: Option<u32>,
+    pub limit: Option<u32>,
+}
+
+{% for model in models -%}
+// {{ model.struct_name }} handlers
+
+pub async fn get_{{ model.name | snake_case }}_list(
+    State(state): State<AppState>,
+    Query(_query): Query<PaginationQuery>,
+) -> Result<Json<Vec<{{ model.struct_name }}>>, AppError> {
+    let records = {{ model.struct_name }}::find_all(&state.db).await?;
+    Ok(Json(records))
+}
+
+pub async fn create_{{ model.name | snake_case }}(
+    State(state): State<AppState>,
+    Json(new_record): Json<Create{{ model.struct_name }}>,
+) -> Result<Json<{{ model.struct_name }}>, AppError> {
+    let record = {{ model.struct_name }}::create(&state.db, new_record).await?;
+    Ok(Json(record))
+}
+
+pub async fn get_{{ model.name | snake_case }}_by_id(
+    State(state): State<AppState>,
+    Path(id): Path<{{ model.primary_key_type | default(value="i64") }}>,
+) -> Result<Json<{{ model.struct_name }}>, AppError> {
+    let record = {{ model.struct_name }}::find_by_id(&state.db, id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    Ok(Json(record))
+}
+
+pub async fn update_{{ model.name | snake_case }}(
+    State(state): State<AppState>,
+    Path(id): Path<{{ model.primary_key_type | default(value="i64") }}>,
+    Json(updates): Json<Update{{ model.struct_name }}>,
+) -> Result<Json<{{ model.struct_name }}>, AppError> {
+    let record = {{ model.struct_name }}::update(&state.db, id, updates).await?;
+    Ok(Json(record))
+}
+
+pub async fn delete_{{ model.name | snake_case }}(
+    State(state): State<AppState>,
+    Path(id): Path<{{ model.primary_key_type | default(value="i64") }}>,
+) -> Result<StatusCode, AppError> {
+    {{ model.struct_name }}::delete(&state.db, id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+{% endfor -%}

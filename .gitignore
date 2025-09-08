@@ -40,7 +40,12 @@ rustform_dev.db*
 # Generated projects (for testing)
 /generated/
 /examples/generated/
+/test-output/
+/test-output-*/
 
 # AI task system (keep structure, ignore temp files)
 ai/temp/
 ai/*.tmp
+
+# Direnv
+.direnv/
