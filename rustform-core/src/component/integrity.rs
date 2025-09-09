@@ -1,6 +1,6 @@
-use crate::error::{Error, Result};
 use crate::component::Component;
-use sha2::{Sha256, Sha384, Sha512, Digest};
+use crate::error::{Error, Result};
+use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::collections::HashMap;
 use tracing::debug;
 
@@ -37,22 +37,26 @@ impl IntegrityVerifier {
     pub fn verify(&self, component: &Component) -> Result<()> {
         if let Some(integrity_str) = &component.manifest.integrity {
             debug!("Verifying component integrity: {}", integrity_str);
-            
+
             let integrity = self.parse_integrity(integrity_str)?;
             let computed_hash = self.compute_component_hash(component, &integrity.algorithm)?;
-            
+
             if computed_hash != integrity.hash {
                 return Err(Error::ComponentError(format!(
                     "Integrity verification failed for component '{}'. Expected: {}, Got: {}",
-                    component.manifest.name,
-                    integrity.hash,
-                    computed_hash
+                    component.manifest.name, integrity.hash, computed_hash
                 )));
             }
-            
-            debug!("Integrity verification passed for component: {}", component.manifest.name);
+
+            debug!(
+                "Integrity verification passed for component: {}",
+                component.manifest.name
+            );
         } else {
-            debug!("No integrity information provided for component: {}", component.manifest.name);
+            debug!(
+                "No integrity information provided for component: {}",
+                component.manifest.name
+            );
         }
 
         Ok(())
@@ -94,12 +98,14 @@ impl IntegrityVerifier {
 
     /// Compute hash for entire component (all content)
     fn compute_component_hash(&self, component: &Component, algorithm: &str) -> Result<String> {
-        let hash_algo = self.algorithms.get(algorithm)
+        let hash_algo = self
+            .algorithms
+            .get(algorithm)
             .ok_or_else(|| Error::ValidationError(format!("Unknown algorithm: {}", algorithm)))?;
 
         // Collect all component content into a deterministic byte stream
         let mut content_bytes = Vec::new();
-        
+
         // Add manifest (normalize by serializing to YAML)
         let manifest_yaml = component.manifest.to_yaml()?;
         content_bytes.extend_from_slice(manifest_yaml.as_bytes());
@@ -166,7 +172,9 @@ impl IntegrityVerifier {
 
     /// Compute hash for individual file content
     pub fn compute_file_hash(&self, content: &[u8], algorithm: &str) -> Result<String> {
-        let hash_algo = self.algorithms.get(algorithm)
+        let hash_algo = self
+            .algorithms
+            .get(algorithm)
             .ok_or_else(|| Error::ValidationError(format!("Unknown algorithm: {}", algorithm)))?;
 
         let hash_bytes = match hash_algo {
@@ -194,12 +202,11 @@ impl IntegrityVerifier {
     pub fn verify_file(&self, content: &[u8], expected_integrity: &str) -> Result<()> {
         let integrity = self.parse_integrity(expected_integrity)?;
         let computed_hash = self.compute_file_hash(content, &integrity.algorithm)?;
-        
+
         if computed_hash != integrity.hash {
             return Err(Error::ComponentError(format!(
                 "File integrity verification failed. Expected: {}, Got: {}",
-                integrity.hash,
-                computed_hash
+                integrity.hash, computed_hash
             )));
         }
 
@@ -217,7 +224,11 @@ impl IntegrityVerifier {
     }
 
     /// Verify multiple integrity hashes (SRI allows multiple algorithms)
-    pub fn verify_multiple(&self, component: &Component, integrity_strings: &[String]) -> Result<()> {
+    pub fn verify_multiple(
+        &self,
+        component: &Component,
+        integrity_strings: &[String],
+    ) -> Result<()> {
         if integrity_strings.is_empty() {
             return Ok(());
         }
@@ -248,12 +259,11 @@ impl IntegrityVerifier {
     fn verify_single_integrity(&self, component: &Component, integrity_str: &str) -> Result<()> {
         let integrity = self.parse_integrity(integrity_str)?;
         let computed_hash = self.compute_component_hash(component, &integrity.algorithm)?;
-        
+
         if computed_hash != integrity.hash {
             return Err(Error::ComponentError(format!(
                 "Integrity verification failed. Expected: {}, Got: {}",
-                integrity.hash,
-                computed_hash
+                integrity.hash, computed_hash
             )));
         }
 
@@ -270,13 +280,13 @@ impl Default for IntegrityVerifier {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::component::{ComponentManifest, ComponentContent, ComponentInterface};
+    use crate::component::{ComponentContent, ComponentInterface, ComponentManifest};
     use std::collections::HashMap;
 
     #[test]
     fn test_integrity_parsing() {
         let verifier = IntegrityVerifier::new();
-        
+
         let integrity = verifier.parse_integrity("sha384-abc123def456").unwrap();
         assert_eq!(integrity.algorithm, "sha384");
         assert_eq!(integrity.hash, "abc123def456");
@@ -285,7 +295,7 @@ mod tests {
     #[test]
     fn test_invalid_integrity_format() {
         let verifier = IntegrityVerifier::new();
-        
+
         let result = verifier.parse_integrity("invalid-format-string");
         assert!(result.is_err());
     }
@@ -293,10 +303,10 @@ mod tests {
     #[test]
     fn test_hash_computation() {
         let verifier = IntegrityVerifier::new();
-        
+
         let test_data = b"hello world";
         let hash = verifier.compute_file_hash(test_data, "sha256").unwrap();
-        
+
         // Verify it's a valid hex string of expected length (64 chars for SHA-256)
         assert_eq!(hash.len(), 64);
         assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
@@ -306,7 +316,7 @@ mod tests {
     fn test_supported_algorithms() {
         let verifier = IntegrityVerifier::new();
         let algorithms = verifier.supported_algorithms();
-        
+
         assert!(algorithms.contains(&"sha256".to_string()));
         assert!(algorithms.contains(&"sha384".to_string()));
         assert!(algorithms.contains(&"sha512".to_string()));
@@ -315,20 +325,37 @@ mod tests {
     #[test]
     fn test_component_hash_deterministic() {
         let verifier = IntegrityVerifier::new();
-        
+
         let manifest = ComponentManifest {
             name: "test-component".to_string(),
             version: "1.0.0".to_string(),
-            description: None,
-            author: None,
-            license: None,
+            description: Some("Test component".to_string()),
+            author: Some("Test Author".to_string()),
+            license: Some("MIT".to_string()),
             homepage: None,
             repository: None,
-            keywords: vec![],
-            dependencies: HashMap::new(),
-            provides: ComponentInterface::default(),
+            keywords: Vec::new(),
+            category: Some("general".to_string()),
+            subcategory: None,
+            priority: Some("medium".to_string()),
+            complexity: Some("medium".to_string()),
+            api_compatibility: crate::component::manifest::ApiCompatibility {
+                api_version: "0.1.0".to_string(),
+                min_version: "0.1.0".to_string(),
+                max_version: Some("0.2.0".to_string()),
+                required_features: None,
+                experimental: None,
+            },
+            dependencies: crate::component::manifest::ComponentDependencies::default(),
+            provides: Some(ComponentInterface::default()),
+            config_schema: None,
+            compliance: None,
+            tests: None,
+            documentation: None,
+            features: None,
+            templates: None,
             integrity: None,
-            files: vec![],
+            files: Vec::new(),
         };
 
         let content = ComponentContent {
@@ -347,9 +374,13 @@ mod tests {
             resolved_path: std::path::PathBuf::from("/tmp"),
         };
 
-        let hash1 = verifier.compute_component_hash(&component, "sha256").unwrap();
-        let hash2 = verifier.compute_component_hash(&component, "sha256").unwrap();
-        
+        let hash1 = verifier
+            .compute_component_hash(&component, "sha256")
+            .unwrap();
+        let hash2 = verifier
+            .compute_component_hash(&component, "sha256")
+            .unwrap();
+
         // Hash should be deterministic
         assert_eq!(hash1, hash2);
     }

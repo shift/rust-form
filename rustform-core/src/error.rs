@@ -1,24 +1,24 @@
-use thiserror::Error;
 use miette::Diagnostic;
+use thiserror::Error;
 
 #[derive(Error, Debug, Diagnostic)]
 pub enum Error {
     #[error("Configuration error")]
     Config(#[from] ConfigError),
-    
+
     #[error("Validation error: {0}")]
     ValidationError(String),
-    
+
     #[error("Component error: {0}")]
     ComponentError(String),
-    
+
     #[error("IO error")]
     Io(#[from] std::io::Error),
-    
+
     #[error("YAML parsing error")]
     Yaml(#[from] serde_yaml::Error),
-    
-    #[error("JSON parsing error")]  
+
+    #[error("JSON parsing error")]
     Json(#[from] serde_json::Error),
 }
 
@@ -32,11 +32,11 @@ pub enum ConfigError {
         help("Check your YAML syntax. Common issues include incorrect indentation, missing colons, or invalid characters.")
     )]
     Yaml(#[from] serde_yaml::Error),
-    
+
     #[error("Configuration validation failed")]
     #[diagnostic(code(config::validation))]
     Validation(#[from] ValidationError),
-    
+
     #[error("IO error")]
     #[diagnostic(code(config::io))]
     Io(#[from] std::io::Error),
@@ -90,7 +90,9 @@ pub enum ValidationError {
     #[error("Model '{model}' has no primary key defined")]
     #[diagnostic(
         code(validation::no_primary_key),
-        help("Add a primary key field to model '{model}' by setting 'primary_key: true' on a field")
+        help(
+            "Add a primary key field to model '{model}' by setting 'primary_key: true' on a field"
+        )
     )]
     NoPrimaryKey { model: String },
 
@@ -174,12 +176,15 @@ pub enum ValidationError {
         code(validation::incompatible_api_version),
         help("Update your configuration's api_version to match a compatible rust-form version or upgrade rust-form")
     )]
-    IncompatibleApiVersion { 
-        requested: String, 
-        current: String, 
-        reason: String 
+    IncompatibleApiVersion {
+        requested: String,
+        current: String,
+        reason: String,
     },
 }
 
 pub type ValidationResult<T> = std::result::Result<T, ValidationError>;
 pub type ConfigResult<T> = std::result::Result<T, ConfigError>;
+
+#[cfg(test)]
+mod tests;

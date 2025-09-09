@@ -1,0 +1,225 @@
+name: PR Quality Gates
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  pull_request_review:
+    types: [submitted]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-size:
+    name: Check PR Size
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Check PR size
+      run: |
+        CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | wc -l)
+        ADDED_LINES=$(git diff --numstat origin/${{ github.base_ref }}..HEAD | awk '{sum += $1} END {print sum}')
+        DELETED_LINES=$(git diff --numstat origin/${{ github.base_ref }}..HEAD | awk '{sum += $2} END {print sum}')
+        
+        echo "📊 PR Statistics:"
+        echo "- Changed files: $CHANGED_FILES"
+        echo "- Added lines: $ADDED_LINES"
+        echo "- Deleted lines: $DELETED_LINES"
+        echo "- Net change: $((ADDED_LINES - DELETED_LINES))"
+        
+        if [[ $CHANGED_FILES -gt 50 ]]; then
+          echo "⚠️ Large PR detected: $CHANGED_FILES files changed"
+          echo "Consider breaking this into smaller PRs for easier review"
+        fi
+        
+        if [[ $ADDED_LINES -gt 1000 ]]; then
+          echo "⚠️ Large PR detected: $ADDED_LINES lines added"
+          echo "Consider breaking this into smaller PRs for easier review"
+        fi
+
+  check-commits:
+    name: Check Commit Quality
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Check commit messages
+      run: |
+        echo "📝 Checking commit messages..."
+        
+        # Get commits in this PR
+        COMMITS=$(git rev-list --reverse origin/${{ github.base_ref }}..HEAD)
+        
+        for commit in $COMMITS; do
+          MESSAGE=$(git log --format=%s -n 1 $commit)
+          echo "Checking commit: $commit - $MESSAGE"
+          
+          # Check for conventional commit format (optional but recommended)
+          if ! echo "$MESSAGE" | grep -qE '^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\(.+\))?: .+'; then
+            echo "ℹ️ Commit $commit does not follow conventional commit format"
+          fi
+          
+          # Check for minimum message length
+          if [[ ${#MESSAGE} -lt 10 ]]; then
+            echo "⚠️ Commit message too short: $MESSAGE"
+          fi
+          
+          # Check for WIP commits
+          if echo "$MESSAGE" | grep -qi "wip\|fixup\|squash"; then
+            echo "⚠️ Found WIP/fixup commit: $MESSAGE"
+            echo "Consider squashing commits before merging"
+          fi
+        done
+
+  check-breaking-changes:
+    name: Check Breaking Changes
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: true
+        
+    - name: Check for breaking changes
+      run: |
+        echo "🔍 Checking for potential breaking changes..."
+        
+        # Check if public API changed
+        if git diff --name-only origin/${{ github.base_ref }}..HEAD | grep -E "(src/lib\.rs|src/.*\.rs)" | head -10; then
+          echo "Rust source files changed - checking for API compatibility"
+          
+          # Build current branch
+          nix develop -c -- cargo check --all-features
+          
+          # Check if examples still compile
+          if ls examples/*.yml >/dev/null 2>&1; then
+            echo "Testing example configurations..."
+            for example in examples/*.yml; do
+              echo "Testing $example"
+              nix develop -c -- cargo run -- generate --config "$example" --output /tmp/test-output --dry-run || {
+                echo "⚠️ Example $example may be broken by these changes"
+              }
+            done
+          fi
+        fi
+
+  performance-check:
+    name: Performance Impact
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: true
+        
+    - name: Run benchmarks
+      run: |
+        echo "🏃 Running performance benchmarks..."
+        
+        # Run benchmarks if they exist
+        if ls benches/*.rs >/dev/null 2>&1; then
+          nix develop -c -- cargo bench --message-format=json > bench-output.json || true
+          
+          if [[ -f bench-output.json ]]; then
+            echo "📈 Benchmark results available"
+            echo "Check bench-output.json for detailed results"
+          fi
+        else
+          echo "No benchmarks found - skipping performance check"
+        fi
+
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: true
+        
+    - name: Check documentation
+      run: |
+        echo "📚 Checking documentation..."
+        
+        # Build docs
+        nix develop -c -- cargo doc --workspace --all-features --no-deps
+        
+        # Check for missing docs
+        nix develop -c -- cargo doc --workspace --all-features --no-deps 2>&1 | grep -i "warning.*missing.*documentation" || {
+          echo "✅ No missing documentation warnings"
+        }
+        
+        # Check if README needs updates
+        if git diff --name-only origin/${{ github.base_ref }}..HEAD | grep -E "(src/|Cargo\.toml)" >/dev/null; then
+          echo "Source files changed - consider updating README.md if needed"
+        fi
+
+  quality-gate:
+    name: Quality Gate Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [check-size, check-commits, check-breaking-changes, performance-check, documentation-check]
+    steps:
+    - name: Quality Gate Results
+      run: |
+        echo "🎯 Quality Gate Summary:"
+        echo "- PR Size Check: ${{ needs.check-size.result }}"
+        echo "- Commit Quality: ${{ needs.check-commits.result }}"
+        echo "- Breaking Changes: ${{ needs.check-breaking-changes.result }}"
+        echo "- Performance: ${{ needs.performance-check.result }}"
+        echo "- Documentation: ${{ needs.documentation-check.result }}"
+        
+        # All checks should pass or be skipped
+        failed_checks=""
+        if [[ "${{ needs.check-breaking-changes.result }}" == "failure" ]]; then
+          failed_checks="$failed_checks breaking-changes"
+        fi
+        if [[ "${{ needs.performance-check.result }}" == "failure" ]]; then
+          failed_checks="$failed_checks performance"
+        fi
+        if [[ "${{ needs.documentation-check.result }}" == "failure" ]]; then
+          failed_checks="$failed_checks documentation"
+        fi
+        
+        if [[ -n "$failed_checks" ]]; then
+          echo "❌ Quality gate failed: $failed_checks"
+          exit 1
+        else
+          echo "✅ Quality gate passed"
+        fi

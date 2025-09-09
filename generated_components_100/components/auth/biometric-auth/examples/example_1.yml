@@ -1,0 +1,4 @@
+# Example 1 for biometric-auth
+project_name: example_1
+components:
+  biometric-auth: "path:../"

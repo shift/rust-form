@@ -1,0 +1,4 @@
+# Example 1 for form-builder
+project_name: example_1
+components:
+  form-builder: "path:../"

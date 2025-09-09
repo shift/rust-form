@@ -1,21 +1,23 @@
-use crate::config::{Config, ModelConfig, EndpointConfig, FieldConfig, FieldType, RelationshipType};
+use crate::config::{
+    Config, EndpointConfig, FieldConfig, FieldType, ModelConfig, RelationshipType,
+};
 use crate::error::{ValidationError, ValidationResult};
-use std::collections::{HashMap, HashSet};
-use regex::Regex;
 use indexmap::IndexMap;
+use regex::Regex;
+use std::collections::{HashMap, HashSet};
 
 pub fn validate_config(config: &Config) -> ValidationResult<()> {
     let mut errors = Vec::new();
 
     // Validate schema version
-    if let Err(e) = validate_version(&config.schema_version) {
+    if let Err(_e) = validate_version(&config.schema_version) {
         errors.push(ValidationError::InvalidVersion {
             version: format!("schema_version: {}", config.schema_version),
         });
     }
 
-    // Validate API version 
-    if let Err(e) = validate_version(&config.api_version) {
+    // Validate API version
+    if let Err(_e) = validate_version(&config.api_version) {
         errors.push(ValidationError::InvalidVersion {
             version: format!("api_version: {}", config.api_version),
         });
@@ -85,7 +87,8 @@ fn validate_project_name(name: &str) -> ValidationResult<()> {
 }
 
 fn validate_version(version: &str) -> ValidationResult<()> {
-    let semver_pattern = Regex::new(r"^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$").unwrap();
+    let semver_pattern =
+        Regex::new(r"^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$").unwrap();
     if !semver_pattern.is_match(version) {
         return Err(ValidationError::InvalidVersion {
             version: version.to_string(),
@@ -173,7 +176,10 @@ fn validate_models(models: &IndexMap<String, ModelConfig>) -> ValidationResult<(
     Ok(())
 }
 
-fn validate_model_fields(model_name: &str, fields: &IndexMap<String, FieldConfig>) -> ValidationResult<()> {
+fn validate_model_fields(
+    model_name: &str,
+    fields: &IndexMap<String, FieldConfig>,
+) -> ValidationResult<()> {
     if fields.is_empty() {
         return Err(ValidationError::EmptySection {
             section: format!("model '{}' fields", model_name),
@@ -181,7 +187,7 @@ fn validate_model_fields(model_name: &str, fields: &IndexMap<String, FieldConfig
     }
 
     let mut primary_keys = Vec::new();
-    
+
     for (field_name, field_config) in fields {
         if field_config.primary_key {
             primary_keys.push(field_name.clone());
@@ -204,7 +210,11 @@ fn validate_model_fields(model_name: &str, fields: &IndexMap<String, FieldConfig
     }
 }
 
-fn validate_field_constraints(model_name: &str, field_name: &str, field_config: &FieldConfig) -> ValidationResult<()> {
+fn validate_field_constraints(
+    model_name: &str,
+    field_name: &str,
+    field_config: &FieldConfig,
+) -> ValidationResult<()> {
     // Auto increment can only be used with integer primary keys
     if field_config.auto_increment && !field_config.primary_key {
         return Err(ValidationError::InvalidFieldConstraint {
@@ -223,7 +233,9 @@ fn validate_field_constraints(model_name: &str, field_name: &str, field_config: 
     }
 
     // Auto now fields should be datetime
-    if (field_config.auto_now || field_config.auto_now_add) && field_config.field_type != FieldType::DateTime {
+    if (field_config.auto_now || field_config.auto_now_add)
+        && field_config.field_type != FieldType::DateTime
+    {
         return Err(ValidationError::InvalidFieldConstraint {
             field: field_name.to_string(),
             model: model_name.to_string(),
@@ -234,24 +246,29 @@ fn validate_field_constraints(model_name: &str, field_name: &str, field_config: 
     // Length constraints only apply to string/text fields
     if field_config.max_length.is_some() || field_config.min_length.is_some() {
         match field_config.field_type {
-            FieldType::String | FieldType::Text => {},
-            _ => return Err(ValidationError::InvalidFieldConstraint {
-                field: field_name.to_string(),
-                model: model_name.to_string(),
-                reason: "length constraints can only be used with string or text fields".to_string(),
-            }),
+            FieldType::String | FieldType::Text => {}
+            _ => {
+                return Err(ValidationError::InvalidFieldConstraint {
+                    field: field_name.to_string(),
+                    model: model_name.to_string(),
+                    reason: "length constraints can only be used with string or text fields"
+                        .to_string(),
+                })
+            }
         }
     }
 
     // Value constraints only apply to numeric fields
     if field_config.min_value.is_some() || field_config.max_value.is_some() {
         match field_config.field_type {
-            FieldType::Integer | FieldType::Float | FieldType::Double | FieldType::Decimal => {},
-            _ => return Err(ValidationError::InvalidFieldConstraint {
-                field: field_name.to_string(),
-                model: model_name.to_string(),
-                reason: "value constraints can only be used with numeric fields".to_string(),
-            }),
+            FieldType::Integer | FieldType::Float | FieldType::Double | FieldType::Decimal => {}
+            _ => {
+                return Err(ValidationError::InvalidFieldConstraint {
+                    field: field_name.to_string(),
+                    model: model_name.to_string(),
+                    reason: "value constraints can only be used with numeric fields".to_string(),
+                })
+            }
         }
     }
 
@@ -280,7 +297,10 @@ fn validate_model_relationships(
                 return Err(ValidationError::InvalidRelationship {
                     model: model_name.to_string(),
                     field: rel_name.to_string(),
-                    reason: format!("foreign key field '{}' does not exist in model", foreign_key),
+                    reason: format!(
+                        "foreign key field '{}' does not exist in model",
+                        foreign_key
+                    ),
                 });
             }
         }
@@ -347,7 +367,13 @@ fn validate_endpoints(
 
         // Validate that at least one CRUD operation is enabled
         let crud = &endpoint.crud;
-        if !crud.create && !crud.read_all && !crud.read_one && !crud.update && !crud.delete && !crud.patch {
+        if !crud.create
+            && !crud.read_all
+            && !crud.read_one
+            && !crud.update
+            && !crud.delete
+            && !crud.patch
+        {
             return Err(ValidationError::InvalidPath {
                 path: endpoint.path.clone(),
                 reason: "at least one CRUD operation must be enabled".to_string(),
@@ -385,11 +411,13 @@ fn validate_endpoint_path(path: &str) -> ValidationResult<()> {
     Ok(())
 }
 
-fn validate_no_circular_dependencies(models: &IndexMap<String, ModelConfig>) -> ValidationResult<()> {
+fn validate_no_circular_dependencies(
+    models: &IndexMap<String, ModelConfig>,
+) -> ValidationResult<()> {
     for (model_name, _model_config) in models {
         let mut visited = HashSet::new();
         let mut path = Vec::new();
-        
+
         if let Err(cycle) = check_circular_dependency(model_name, models, &mut visited, &mut path) {
             return Err(ValidationError::CircularDependency { cycle });
         }
@@ -422,7 +450,7 @@ fn check_circular_dependency(
             if relationship.model == model_name {
                 continue;
             }
-            
+
             // Only check relationships that could create dependencies
             match relationship.relationship_type {
                 RelationshipType::OneToOne | RelationshipType::ManyToOne => {
@@ -437,7 +465,9 @@ fn check_circular_dependency(
     Ok(())
 }
 
-fn validate_middleware_config(middleware: &[crate::config::MiddlewareConfig]) -> ValidationResult<()> {
+fn validate_middleware_config(
+    middleware: &[crate::config::MiddlewareConfig],
+) -> ValidationResult<()> {
     // Basic middleware validation - could be extended
     for middleware_item in middleware {
         match middleware_item {
@@ -470,7 +500,7 @@ fn validate_middleware_config(middleware: &[crate::config::MiddlewareConfig]) ->
 fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
     // Current rust-form version from workspace
     const CURRENT_RUSTFORM_VERSION: &str = "0.1.0";
-    
+
     // Parse versions for comparison
     let parse_version = |v: &str| -> Result<(u32, u32, u32), ValidationError> {
         let parts: Vec<&str> = v.split('.').collect();
@@ -479,23 +509,29 @@ fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
                 version: v.to_string(),
             });
         }
-        
-        let major = parts[0].parse::<u32>().map_err(|_| ValidationError::InvalidVersion {
-            version: v.to_string(),
-        })?;
-        let minor = parts[1].parse::<u32>().map_err(|_| ValidationError::InvalidVersion {
-            version: v.to_string(),
-        })?;
-        let patch = parts[2].parse::<u32>().map_err(|_| ValidationError::InvalidVersion {
-            version: v.to_string(),
-        })?;
-        
+
+        let major = parts[0]
+            .parse::<u32>()
+            .map_err(|_| ValidationError::InvalidVersion {
+                version: v.to_string(),
+            })?;
+        let minor = parts[1]
+            .parse::<u32>()
+            .map_err(|_| ValidationError::InvalidVersion {
+                version: v.to_string(),
+            })?;
+        let patch = parts[2]
+            .parse::<u32>()
+            .map_err(|_| ValidationError::InvalidVersion {
+                version: v.to_string(),
+            })?;
+
         Ok((major, minor, patch))
     };
-    
+
     let (api_major, api_minor, _) = parse_version(api_version)?;
     let (current_major, current_minor, _) = parse_version(CURRENT_RUSTFORM_VERSION)?;
-    
+
     // Check compatibility rules
     if api_major > current_major {
         return Err(ValidationError::IncompatibleApiVersion {
@@ -504,7 +540,7 @@ fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
             reason: "Major version too new".to_string(),
         });
     }
-    
+
     if api_major < current_major {
         return Err(ValidationError::IncompatibleApiVersion {
             requested: api_version.to_string(),
@@ -512,7 +548,7 @@ fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
             reason: "Major version too old".to_string(),
         });
     }
-    
+
     // Same major version - check minor version compatibility
     if api_minor > current_minor {
         return Err(ValidationError::IncompatibleApiVersion {
@@ -521,6 +557,6 @@ fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
             reason: "Minor version too new".to_string(),
         });
     }
-    
+
     Ok(())
 }

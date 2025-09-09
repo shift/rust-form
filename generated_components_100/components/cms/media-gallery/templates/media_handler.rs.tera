@@ -1,0 +1,70 @@
+use axum::{extract::Multipart, response::Json};
+use serde::Serialize;
+use std::path::PathBuf;
+use uuid::Uuid;
+use tokio::fs;
+
+#[derive(Serialize)]
+pub struct MediaUploadResponse {
+    pub id: Uuid,
+    pub filename: String,
+    pub url: String,
+    pub size: u64,
+    pub content_type: String,
+}
+
+#[derive(Serialize)]
+pub struct MediaError {
+    pub error: String,
+    pub code: String,
+}
+
+pub async fn upload_media(mut multipart: Multipart) -> Result<Json<MediaUploadResponse>, Json<MediaError>> {
+    while let Some(field) = multipart.next_field().await.unwrap() {
+        let name = field.name().unwrap_or("file").to_string();
+        
+        if name == "file" {
+            let filename = field.file_name()
+                .unwrap_or("unknown")
+                .to_string();
+            
+            let content_type = field.content_type()
+                .unwrap_or("application/octet-stream")
+                .to_string();
+            
+            let data = field.bytes().await.unwrap();
+            let size = data.len() as u64;
+            
+            // Generate unique filename
+            let file_id = Uuid::new_v4();
+            let extension = PathBuf::from(&filename)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or("bin");
+            
+            let unique_filename = format!("{}.{}", file_id, extension);
+            let file_path = PathBuf::from("uploads").join(&unique_filename);
+            
+            // Ensure uploads directory exists
+            if let Some(parent) = file_path.parent() {
+                fs::create_dir_all(parent).await.unwrap();
+            }
+            
+            // Save file
+            fs::write(&file_path, &data).await.unwrap();
+            
+            return Ok(Json(MediaUploadResponse {
+                id: file_id,
+                filename: unique_filename,
+                url: format!("/uploads/{}", unique_filename),
+                size,
+                content_type,
+            }));
+        }
+    }
+    
+    Err(Json(MediaError {
+        error: "No file found in request".to_string(),
+        code: "NO_FILE".to_string(),
+    }))
+}

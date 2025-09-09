@@ -1,0 +1,4 @@
+# Example 3 for shipping-calculator
+project_name: example_3
+components:
+  shipping-calculator: "path:../"

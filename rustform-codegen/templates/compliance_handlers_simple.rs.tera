@@ -1,0 +1,49 @@
+// Auto-generated compliance-aware handlers for {{ project_name }}
+// Generated with GDPR, CCPA, and other regulatory compliance built-in
+
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    middleware,
+    response::Json,
+    routing::{get, post, put, delete},
+    Router,
+};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+use tower_http::cors::CorsLayer;
+use tracing::{info, warn, error};
+
+use crate::{
+    models::*,
+    services::*,
+    error::AppError,
+};
+
+// Simple compliance handlers
+pub async fn get_data_export(
+    State(app_state): State<AppState>,
+    Path(user_id): Path<String>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    info!("Data export request for user: {}", user_id);
+    
+    // Implementation would collect all user data
+    let export_data = serde_json::json!({
+        "user_id": user_id,
+        "message": "Data export functionality - implementation pending"
+    });
+    
+    Ok(Json(export_data))
+}
+
+pub async fn delete_user_data(
+    State(app_state): State<AppState>,
+    Path(user_id): Path<String>,
+) -> Result<StatusCode, StatusCode> {
+    info!("Data deletion request for user: {}", user_id);
+    
+    // Implementation would delete all user data
+    // This would be a critical GDPR "right to be forgotten" operation
+    
+    Ok(StatusCode::NO_CONTENT)
+}

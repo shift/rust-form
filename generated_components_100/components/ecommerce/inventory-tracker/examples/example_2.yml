@@ -1,0 +1,4 @@
+# Example 2 for inventory-tracker
+project_name: example_2
+components:
+  inventory-tracker: "path:../"

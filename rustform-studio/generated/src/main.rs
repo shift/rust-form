@@ -14,10 +14,12 @@ mod models;
 mod handlers;
 mod database;
 mod error;
+mod component_handlers;
 
 pub use database::*;
 pub use error::*;
 use handlers::*;
+use component_handlers::*;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -77,6 +79,14 @@ fn create_router(state: AppState) -> Router {
         .route("/components/:id", get(get_component_by_id))
         .route("/components/:id", put(update_component))
         .route("/components/:id", delete(delete_component))
+        
+        // Component generation routes
+        .route("/components/generate", post(generate_component))
+        .route("/components/generate/library", post(generate_component_library))
+        .route("/components/categories", get(get_component_categories))
+        .route("/components/:id/refresh", post(refresh_component))
+        .route("/components/bulk-install", post(bulk_install_components))
+        .route("/components/check-updates", get(check_component_updates))
         
         // Project routes
         .route("/projects", get(get_project_list))

@@ -4,76 +4,268 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
-  create-release:
-    name: Create Release
+  verify-tag:
+    name: Verify Tag
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      tag: ${{ steps.get-tag.outputs.tag }}
+      version: ${{ steps.get-tag.outputs.version }}
     steps:
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/checkout@v4
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
+        fetch-depth: 0
+        
+    - name: Get tag
+      id: get-tag
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          TAG="${{ github.event.inputs.tag }}"
+        else
+          TAG="${GITHUB_REF#refs/tags/}"
+        fi
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+        echo "Tag: $TAG"
+        echo "Version: ${TAG#v}"
 
   build-release:
     name: Build Release
-    needs: create-release
+    needs: verify-tag
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
         - os: ubuntu-latest
-          asset_name: rustform-linux-x86_64
           target: x86_64-unknown-linux-gnu
+          asset_name: rustform-linux-x86_64
+          use_nix: true
+        - os: ubuntu-latest
+          target: aarch64-unknown-linux-gnu
+          asset_name: rustform-linux-aarch64
+          use_nix: true
         - os: windows-latest
-          asset_name: rustform-windows-x86_64.exe
           target: x86_64-pc-windows-msvc
+          asset_name: rustform-windows-x86_64.exe
+          use_nix: false
         - os: macos-latest
-          asset_name: rustform-macos-x86_64
           target: x86_64-apple-darwin
+          asset_name: rustform-macos-x86_64
+          use_nix: true
+        - os: macos-latest
+          target: aarch64-apple-darwin
+          asset_name: rustform-macos-aarch64
+          use_nix: true
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     
     - name: Install Nix (Unix)
-      if: matrix.os != 'windows-latest'
-      uses: cachix/install-nix-action@v24
+      if: matrix.use_nix
+      uses: cachix/install-nix-action@v27
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
         
-    - name: Build (Unix)
-      if: matrix.os != 'windows-latest'
-      run: nix build
-      
+    - name: Setup Nix Cache (Unix)
+      if: matrix.use_nix
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        
     - name: Install Rust (Windows)
       if: matrix.os == 'windows-latest'
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-        target: ${{ matrix.target }}
-        override: true
+        targets: ${{ matrix.target }}
         
-    - name: Build (Windows)
-      if: matrix.os == 'windows-latest'
-      run: cargo build --release --target ${{ matrix.target }}
+    - name: Install cross-compilation tools (Linux ARM64)
+      if: matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
+        
+    - name: Build (Nix)
+      if: matrix.use_nix && matrix.target == 'x86_64-unknown-linux-gnu'
+      run: nix build
       
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build (Cargo)
+      if: matrix.use_nix == false || matrix.target != 'x86_64-unknown-linux-gnu'
+      run: |
+        if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+          export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar
+        fi
+        
+        if [[ "${{ matrix.use_nix }}" == "true" ]]; then
+          nix develop -c -- cargo build --release --target ${{ matrix.target }}
+        else
+          cargo build --release --target ${{ matrix.target }}
+        fi
+        
+    - name: Prepare artifacts
+      run: |
+        mkdir -p artifacts
+        if [[ "${{ matrix.use_nix }}" == "true" && "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]]; then
+          cp result/bin/rustform artifacts/${{ matrix.asset_name }}
+        else
+          cp target/${{ matrix.target }}/release/rustform${{ matrix.os == 'windows-latest' && '.exe' || '' }} artifacts/${{ matrix.asset_name }}
+        fi
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./target/release/rustform${{ matrix.os == 'windows-latest' && '.exe' || '' }}
-        asset_name: ${{ matrix.asset_name }}
-        asset_content_type: application/octet-stream
+        name: ${{ matrix.asset_name }}
+        path: artifacts/${{ matrix.asset_name }}
+        retention-days: 1
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [verify-tag, build-release]
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Generate changelog from git commits since last tag
+        LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [[ -n "$LAST_TAG" ]]; then
+          echo "## Changes since $LAST_TAG" > CHANGELOG.md
+          git log --pretty=format:"- %s (%h)" $LAST_TAG..HEAD >> CHANGELOG.md
+        else
+          echo "## Initial Release" > CHANGELOG.md
+          echo "- First release of rust-form" >> CHANGELOG.md
+        fi
+        
+        # Read changelog content
+        CHANGELOG_CONTENT=$(cat CHANGELOG.md)
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ needs.verify-tag.outputs.tag }}
+        name: Release ${{ needs.verify-tag.outputs.tag }}
+        body: |
+          # rust-form ${{ needs.verify-tag.outputs.version }}
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## Installation
+          
+          Download the appropriate binary for your platform below.
+          
+          ### Linux
+          ```bash
+          curl -L -o rustform https://github.com/${{ github.repository }}/releases/download/${{ needs.verify-tag.outputs.tag }}/rustform-linux-x86_64
+          chmod +x rustform
+          sudo mv rustform /usr/local/bin/
+          ```
+          
+          ### macOS
+          ```bash
+          # Intel Macs
+          curl -L -o rustform https://github.com/${{ github.repository }}/releases/download/${{ needs.verify-tag.outputs.tag }}/rustform-macos-x86_64
+          
+          # Apple Silicon Macs
+          curl -L -o rustform https://github.com/${{ github.repository }}/releases/download/${{ needs.verify-tag.outputs.tag }}/rustform-macos-aarch64
+          
+          chmod +x rustform
+          sudo mv rustform /usr/local/bin/
+          ```
+          
+          ### Windows
+          Download `rustform-windows-x86_64.exe` and add it to your PATH.
+          
+          ## Verification
+          
+          After installation, verify with:
+          ```bash
+          rustform --version
+          ```
+        files: |
+          artifacts/*/rustform-*
+        draft: false
+        prerelease: ${{ contains(needs.verify-tag.outputs.tag, '-') }}
+        generate_release_notes: true
+
+  publish-crates:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: [verify-tag, create-release]
+    if: ${{ !contains(needs.verify-tag.outputs.tag, '-') }}
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        
+    - name: Publish rustform-core
+      run: nix develop -c -- cargo publish -p rustform-core --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      continue-on-error: true
+      
+    - name: Wait for rustform-core to be available
+      run: sleep 30
+      
+    - name: Publish rustform-codegen
+      run: nix develop -c -- cargo publish -p rustform-codegen --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      continue-on-error: true
+      
+    - name: Wait for rustform-codegen to be available
+      run: sleep 30
+      
+    - name: Publish rustform-cli
+      run: nix develop -c -- cargo publish -p rustform-cli --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      continue-on-error: true
+
+  notify-release:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [verify-tag, create-release]
+    if: always()
+    steps:
+    - name: Release Summary
+      run: |
+        echo "🚀 Release ${{ needs.verify-tag.outputs.tag }} completed!"
+        echo "📋 Status:"
+        echo "- Create Release: ${{ needs.create-release.result }}"
+        echo "- Publish Crates: ${{ needs.publish-crates.result || 'skipped' }}"
+        
+        if [[ "${{ needs.create-release.result }}" == "success" ]]; then
+          echo "✅ Release created successfully"
+        else
+          echo "❌ Release creation failed"
+        fi

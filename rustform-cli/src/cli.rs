@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(name = "rustform")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Declarative, Type-Safe Web Backends in Rust")]
@@ -18,49 +18,49 @@ Example:
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
-    
+
     /// Enable verbose output
     #[arg(short, long, global = true)]
     pub verbose: bool,
-    
+
     /// Suppress most output
     #[arg(short, long, global = true, conflicts_with = "verbose")]
     pub quiet: bool,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Generate a Rust web backend from configuration
     Generate {
         /// Path to the configuration file
         #[arg(value_name = "CONFIG")]
         config: PathBuf,
-        
+
         /// Output directory for generated project
         #[arg(short, long, value_name = "DIR")]
         output: Option<PathBuf>,
-        
+
         /// Overwrite existing files without prompting
         #[arg(long)]
         force: bool,
     },
-    
+
     /// Initialize a new rustform project
     Init {
         /// Project name
         #[arg(value_name = "NAME")]
         name: Option<String>,
-        
+
         /// Project directory (defaults to project name)
         #[arg(short, long, value_name = "DIR")]
         directory: Option<PathBuf>,
-        
+
         /// Database type
         #[arg(long, default_value = "sqlite")]
         #[arg(value_parser = ["sqlite", "postgres", "mysql"])]
         database: String,
     },
-    
+
     /// Manage components
     #[command(alias = "comp")]
     Component {
@@ -74,3 +74,6 @@ impl Cli {
         Self::parse()
     }
 }
+
+#[cfg(test)]
+mod tests;

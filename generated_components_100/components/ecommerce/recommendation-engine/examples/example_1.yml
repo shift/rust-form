@@ -1,0 +1,4 @@
+# Example 1 for recommendation-engine
+project_name: example_1
+components:
+  recommendation-engine: "path:../"

@@ -1,0 +1,4 @@
+# Example 2 for subscription-billing
+project_name: example_2
+components:
+  subscription-billing: "path:../"

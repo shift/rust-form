@@ -1,0 +1,4 @@
+# Example 2 for coupon-manager
+project_name: example_2
+components:
+  coupon-manager: "path:../"

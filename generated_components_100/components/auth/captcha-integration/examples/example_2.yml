@@ -1,0 +1,4 @@
+# Example 2 for captcha-integration
+project_name: example_2
+components:
+  captcha-integration: "path:../"

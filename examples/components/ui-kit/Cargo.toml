@@ -1,0 +1,13 @@
+[package]
+name = "ui-kit"
+version = "1.0.0"
+edition = "2021"
+description = "Basic UI components for Rust-form projects"
+
+[workspace]
+
+[lib]
+name = "ui_kit"
+path = "src/lib_test.rs"
+
+[dependencies]

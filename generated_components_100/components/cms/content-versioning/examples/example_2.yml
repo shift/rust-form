@@ -1,0 +1,4 @@
+# Example 2 for content-versioning
+project_name: example_2
+components:
+  content-versioning: "path:../"

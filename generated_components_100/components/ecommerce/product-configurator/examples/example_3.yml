@@ -1,0 +1,4 @@
+# Example 3 for product-configurator
+project_name: example_3
+components:
+  product-configurator: "path:../"

@@ -1,0 +1,70 @@
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::Json,
+    routing::{get, post, put, delete},
+    Router,
+};
+use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
+
+use crate::{models::*, error::*};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JwtAuthenticationRequest {
+    // Add request fields here
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JwtAuthenticationResponse {
+    pub id: i64,
+    pub name: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Create new jwt authentication
+pub async fn create_jwt_authentication(
+    State(pool): State<SqlitePool>,
+    Json(request): Json<JwtAuthenticationRequest>,
+) -> Result<Json<JwtAuthenticationResponse>, AppError> {
+    // Implementation here
+    todo!("Implement jwt-authentication creation")
+}
+
+/// Get jwt authentication by ID
+pub async fn get_jwt_authentication_by_id(
+    State(pool): State<SqlitePool>,
+    Path(id): Path<i64>,
+) -> Result<Json<JwtAuthenticationResponse>, AppError> {
+    // Implementation here
+    todo!("Implement jwt-authentication retrieval")
+}
+
+/// Update jwt authentication
+pub async fn update_jwt_authentication(
+    State(pool): State<SqlitePool>,
+    Path(id): Path<i64>,
+    Json(request): Json<JwtAuthenticationRequest>,
+) -> Result<Json<JwtAuthenticationResponse>, AppError> {
+    // Implementation here
+    todo!("Implement jwt-authentication update")
+}
+
+/// Delete jwt authentication
+pub async fn delete_jwt_authentication(
+    State(pool): State<SqlitePool>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, AppError> {
+    // Implementation here
+    todo!("Implement jwt-authentication deletion")
+}
+
+/// Get jwt authentication routes
+pub fn jwt_authentication_routes() -> Router<SqlitePool> {
+    Router::new()
+        .route("/jwt_authentication", post(create_jwt_authentication))
+        .route("/jwt_authentication/{id}", get(get_jwt_authentication_by_id))
+        .route("/jwt_authentication/{id}", put(update_jwt_authentication))
+        .route("/jwt_authentication/{id}", delete(delete_jwt_authentication))
+}

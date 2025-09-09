@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Showcase - RustForm Components</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav button:hover, .nav button.active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .main-content {
+            flex: 1;
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            width: 100%;
+        }
+
+        .demo-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .demo-section h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .auth-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .auth-component {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .auth-component:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .auth-component h3 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .auth-component p {
+            color: #6c757d;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .demo-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .demo-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-button.success {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+        }
+
+        .demo-button.warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+        }
+
+        .demo-button.danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .login-form {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            max-width: 400px;
+            margin: 1rem auto;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .notification {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            border: 1px solid #c3e6cb;
+            border-left: 4px solid #28a745;
+        }
+
+        .notification.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+            border-left-color: #dc3545;
+        }
+
+        .notification.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
+            border-left-color: #17a2b8;
+        }
+
+        .security-level {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.5rem 0;
+        }
+
+        .security-bar {
+            flex: 1;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .security-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #f39c12, #27ae60);
+            transition: width 0.3s;
+        }
+
+        .oauth-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .oauth-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .oauth-button:hover {
+            background: #f8f9fa;
+            transform: translateY(-1px);
+        }
+
+        .mfa-steps {
+            display: flex;
+            justify-content: space-between;
+            margin: 1rem 0;
+        }
+
+        .mfa-step {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 6px;
+            background: #f8f9fa;
+            min-width: 80px;
+        }
+
+        .mfa-step.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .mfa-step.completed {
+            background: #27ae60;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">🔐 RustForm Authentication Showcase</h1>
+            <nav class="nav">
+                <button onclick="showSection('overview')" class="active" id="overview-btn">Overview</button>
+                <button onclick="showSection('jwt')" id="jwt-btn">JWT Auth</button>
+                <button onclick="showSection('oauth')" id="oauth-btn">OAuth2</button>
+                <button onclick="showSection('mfa')" id="mfa-btn">Multi-Factor</button>
+                <button onclick="showSection('rbac')" id="rbac-btn">RBAC</button>
+                <button onclick="showSection('security')" id="security-btn">Security</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Overview Section -->
+        <div id="overview-section" class="demo-section">
+            <h2>🛡️ Authentication & Security Components</h2>
+            <p>Comprehensive showcase of <strong>20+ authentication and security components</strong> built with RustForm.</p>
+            
+            <div class="auth-grid">
+                <div class="auth-component">
+                    <h3>🔑 JWT Authentication</h3>
+                    <p>Secure token-based authentication with refresh tokens and role management</p>
+                    <div class="security-level">
+                        <span>Security Level:</span>
+                        <div class="security-bar">
+                            <div class="security-fill" style="width: 85%;"></div>
+                        </div>
+                        <span>High</span>
+                    </div>
+                    <button class="demo-button" onclick="showSection('jwt')">Demo JWT</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>🌐 OAuth2 Integration</h3>
+                    <p>Google, GitHub, and custom OAuth2 provider integration</p>
+                    <div class="security-level">
+                        <span>Security Level:</span>
+                        <div class="security-bar">
+                            <div class="security-fill" style="width: 90%;"></div>
+                        </div>
+                        <span>Very High</span>
+                    </div>
+                    <button class="demo-button" onclick="showSection('oauth')">Demo OAuth2</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>📱 Multi-Factor Authentication</h3>
+                    <p>SMS, TOTP, and biometric authentication methods</p>
+                    <div class="security-level">
+                        <span>Security Level:</span>
+                        <div class="security-bar">
+                            <div class="security-fill" style="width: 95%;"></div>
+                        </div>
+                        <span>Maximum</span>
+                    </div>
+                    <button class="demo-button" onclick="showSection('mfa')">Demo MFA</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>👥 Role-Based Access Control</h3>
+                    <p>Granular permission management and access control</p>
+                    <div class="security-level">
+                        <span>Complexity:</span>
+                        <div class="security-bar">
+                            <div class="security-fill" style="width: 75%;"></div>
+                        </div>
+                        <span>Advanced</span>
+                    </div>
+                    <button class="demo-button" onclick="showSection('rbac')">Demo RBAC</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>🔒 Session Management</h3>
+                    <p>Secure session handling with Redis backend</p>
+                    <button class="demo-button" onclick="demoSession()">Demo Sessions</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>🔐 SAML Integration</h3>
+                    <p>Enterprise SSO with SAML 2.0 support</p>
+                    <button class="demo-button" onclick="demoSAML()">Demo SAML</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>🚨 Rate Limiting</h3>
+                    <p>Brute force protection and API rate limiting</p>
+                    <button class="demo-button warning" onclick="demoRateLimit()">Test Limits</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>📧 Email Verification</h3>
+                    <p>Email-based account verification system</p>
+                    <button class="demo-button" onclick="demoEmailVerification()">Demo Email</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- JWT Section -->
+        <div id="jwt-section" class="demo-section hidden">
+            <h2>🔑 JWT Authentication Demo</h2>
+            <p>Demonstrates: jwt-authentication, session-management, remember-me components</p>
+            
+            <div class="login-form">
+                <h3>Login with JWT</h3>
+                <div class="form-group">
+                    <label for="jwt-email">Email:</label>
+                    <input type="email" id="jwt-email" value="demo@rustform.com">
+                </div>
+                <div class="form-group">
+                    <label for="jwt-password">Password:</label>
+                    <input type="password" id="jwt-password" value="demo123">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="remember-me"> Remember me
+                    </label>
+                </div>
+                <button class="demo-button" onclick="demoJWTLogin()">Login</button>
+                <button class="demo-button" onclick="demoJWTRefresh()">Refresh Token</button>
+                <button class="demo-button danger" onclick="demoJWTLogout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- OAuth2 Section -->
+        <div id="oauth-section" class="demo-section hidden">
+            <h2>🌐 OAuth2 Integration Demo</h2>
+            <p>Demonstrates: oauth2-integration, social-login, sso-provider components</p>
+            
+            <div class="login-form">
+                <h3>Social Login</h3>
+                <div class="oauth-buttons">
+                    <div class="oauth-button" onclick="demoOAuth('google')">
+                        <span>🔵</span>
+                        <span>Continue with Google</span>
+                    </div>
+                    <div class="oauth-button" onclick="demoOAuth('github')">
+                        <span>⚫</span>
+                        <span>Continue with GitHub</span>
+                    </div>
+                    <div class="oauth-button" onclick="demoOAuth('microsoft')">
+                        <span>🔷</span>
+                        <span>Continue with Microsoft</span>
+                    </div>
+                    <div class="oauth-button" onclick="demoOAuth('custom')">
+                        <span>🟢</span>
+                        <span>Continue with Custom Provider</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MFA Section -->
+        <div id="mfa-section" class="demo-section hidden">
+            <h2>📱 Multi-Factor Authentication Demo</h2>
+            <p>Demonstrates: multi-factor-auth, phone-verification, biometric-auth components</p>
+            
+            <div class="mfa-steps">
+                <div class="mfa-step completed">
+                    <div style="font-size: 1.5rem;">✅</div>
+                    <div>Password</div>
+                </div>
+                <div class="mfa-step active">
+                    <div style="font-size: 1.5rem;">📱</div>
+                    <div>2FA Code</div>
+                </div>
+                <div class="mfa-step">
+                    <div style="font-size: 1.5rem;">🔐</div>
+                    <div>Biometric</div>
+                </div>
+            </div>
+
+            <div class="login-form">
+                <h3>Complete Authentication</h3>
+                <div class="form-group">
+                    <label for="mfa-code">Enter 6-digit code from your authenticator app:</label>
+                    <input type="text" id="mfa-code" placeholder="123456" maxlength="6">
+                </div>
+                <button class="demo-button" onclick="demoMFAVerify()">Verify Code</button>
+                <button class="demo-button" onclick="demoSMS()">Send SMS Code</button>
+                <button class="demo-button" onclick="demoBiometric()">Use Biometric</button>
+            </div>
+        </div>
+
+        <!-- RBAC Section -->
+        <div id="rbac-section" class="demo-section hidden">
+            <h2>👥 Role-Based Access Control Demo</h2>
+            <p>Demonstrates: rbac-engine, audit-logger, account-lockout components</p>
+            
+            <div class="auth-grid">
+                <div class="auth-component">
+                    <h3>👤 User Role: Customer</h3>
+                    <p>Permissions: Read products, Manage own orders</p>
+                    <button class="demo-button" onclick="testPermission('customer', 'read_products')">Test Read Products</button>
+                    <button class="demo-button" onclick="testPermission('customer', 'delete_user')">Test Delete User</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>🛍️ User Role: Vendor</h3>
+                    <p>Permissions: Manage products, View analytics</p>
+                    <button class="demo-button" onclick="testPermission('vendor', 'manage_products')">Test Manage Products</button>
+                    <button class="demo-button" onclick="testPermission('vendor', 'view_analytics')">Test View Analytics</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>⚡ User Role: Admin</h3>
+                    <p>Permissions: Full system access</p>
+                    <button class="demo-button success" onclick="testPermission('admin', 'delete_user')">Test Delete User</button>
+                    <button class="demo-button success" onclick="testPermission('admin', 'system_config')">Test System Config</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Section -->
+        <div id="security-section" class="demo-section hidden">
+            <h2>🛡️ Advanced Security Features</h2>
+            <p>Demonstrates: audit-logger, device-tracking, captcha-integration, password-policy components</p>
+            
+            <div class="auth-grid">
+                <div class="auth-component">
+                    <h3>🔍 Audit Logging</h3>
+                    <p>Track all authentication events and security actions</p>
+                    <button class="demo-button" onclick="viewAuditLog()">View Audit Log</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>📱 Device Tracking</h3>
+                    <p>Monitor and manage user devices and sessions</p>
+                    <button class="demo-button" onclick="viewDevices()">View Devices</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>🤖 CAPTCHA Protection</h3>
+                    <p>Bot protection for login and registration forms</p>
+                    <button class="demo-button" onclick="demoCaptcha()">Test CAPTCHA</button>
+                </div>
+
+                <div class="auth-component">
+                    <h3>🔒 Password Policy</h3>
+                    <p>Enforce strong password requirements</p>
+                    <button class="demo-button" onclick="testPasswordPolicy()">Test Policy</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentUser = null;
+        let mfaStep = 1;
+
+        function showSection(sectionName) {
+            // Hide all sections
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.nav button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionName + '-section').classList.remove('hidden');
+            document.getElementById(sectionName + '-btn').classList.add('active');
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.querySelector('.main-content').insertBefore(
+                notification, 
+                document.querySelector('.main-content').firstChild
+            );
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 4000);
+        }
+
+        // JWT Authentication
+        function demoJWTLogin() {
+            const email = document.getElementById('jwt-email').value;
+            const rememberMe = document.getElementById('remember-me').checked;
+            
+            showNotification('🔑 JWT token generated successfully!');
+            currentUser = { email, role: 'user' };
+            
+            setTimeout(() => {
+                showNotification(`✅ User ${email} authenticated with JWT`, 'success');
+                if (rememberMe) {
+                    showNotification('💾 Remember me token stored for 30 days', 'info');
+                }
+            }, 1000);
+        }
+
+        function demoJWTRefresh() {
+            if (!currentUser) {
+                showNotification('❌ Please login first', 'error');
+                return;
+            }
+            showNotification('🔄 JWT token refreshed successfully!');
+        }
+
+        function demoJWTLogout() {
+            currentUser = null;
+            showNotification('👋 Logged out successfully. JWT token invalidated.', 'info');
+        }
+
+        // OAuth2
+        function demoOAuth(provider) {
+            showNotification(`🔄 Redirecting to ${provider} OAuth2...`, 'info');
+            
+            setTimeout(() => {
+                showNotification(`✅ Successfully authenticated with ${provider}!`, 'success');
+                currentUser = { provider, role: 'user' };
+            }, 2000);
+        }
+
+        // Multi-Factor Authentication
+        function demoMFAVerify() {
+            const code = document.getElementById('mfa-code').value;
+            
+            if (code.length !== 6) {
+                showNotification('❌ Please enter a 6-digit code', 'error');
+                return;
+            }
+            
+            showNotification('✅ 2FA code verified successfully!', 'success');
+            
+            // Update MFA steps
+            document.querySelectorAll('.mfa-step').forEach((step, index) => {
+                if (index < 2) {
+                    step.className = 'mfa-step completed';
+                } else {
+                    step.className = 'mfa-step active';
+                }
+            });
+        }
+
+        function demoSMS() {
+            showNotification('📱 SMS verification code sent to your phone!', 'info');
+        }
+
+        function demoBiometric() {
+            showNotification('👆 Biometric authentication successful!', 'success');
+            
+            // Complete all MFA steps
+            document.querySelectorAll('.mfa-step').forEach(step => {
+                step.className = 'mfa-step completed';
+            });
+        }
+
+        // RBAC
+        function testPermission(role, permission) {
+            const permissions = {
+                customer: ['read_products', 'manage_own_orders'],
+                vendor: ['read_products', 'manage_products', 'view_analytics'],
+                admin: ['read_products', 'manage_products', 'view_analytics', 'delete_user', 'system_config']
+            };
+            
+            const hasPermission = permissions[role].includes(permission);
+            
+            if (hasPermission) {
+                showNotification(`✅ Permission "${permission}" granted for ${role}`, 'success');
+            } else {
+                showNotification(`❌ Permission "${permission}" denied for ${role}`, 'error');
+            }
+        }
+
+        // Security Features
+        function viewAuditLog() {
+            showNotification('📋 Audit log: Login attempts, permission checks, security events logged', 'info');
+        }
+
+        function viewDevices() {
+            showNotification('📱 Active devices: Chrome (Current), iPhone Safari (2 days ago)', 'info');
+        }
+
+        function demoCaptcha() {
+            showNotification('🤖 CAPTCHA challenge completed successfully!', 'success');
+        }
+
+        function testPasswordPolicy() {
+            showNotification('🔒 Password policy: Min 8 chars, uppercase, lowercase, number, special char', 'info');
+        }
+
+        // Other auth demos
+        function demoSession() {
+            showNotification('🗄️ Session created and stored in Redis with 24h expiry', 'success');
+        }
+
+        function demoSAML() {
+            showNotification('🏢 SAML SSO authentication flow initiated with enterprise provider', 'info');
+        }
+
+        function demoRateLimit() {
+            showNotification('⚠️ Rate limit: 5 attempts exceeded. Account temporarily locked.', 'warning');
+        }
+
+        function demoEmailVerification() {
+            showNotification('📧 Verification email sent. Please check your inbox.', 'info');
+        }
+    </script>
+</body>
+</html>

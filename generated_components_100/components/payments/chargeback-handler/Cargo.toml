@@ -1,0 +1,15 @@
+[package]
+name = "chargeback-handler"
+version = "1.0.0"
+edition = "2021"
+
+[workspace]
+
+[lib]
+name = "chargeback_handler"
+path = "src/lib_test.rs"
+
+[dependencies]
+stripe = "0.28"
+hmac = "0.12"
+sha2 = "0.10"

@@ -1,0 +1,31 @@
+use axum::{extract::Json, response::Json as ResponseJson};
+use serde::{Deserialize, Serialize};
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
+
+#[derive(Deserialize)]
+pub struct WebhookPayload {
+    pub event_type: String,
+    pub data: serde_json::Value,
+    pub timestamp: i64,
+}
+
+#[derive(Serialize)]
+pub struct WebhookResponse {
+    pub received: bool,
+    pub processed: bool,
+    pub message: String,
+}
+
+pub async fn handle_webhook(
+    Json(payload): Json<WebhookPayload>
+) -> ResponseJson<WebhookResponse> {
+    // Verify webhook signature
+    // Process webhook payload based on event type
+    
+    ResponseJson(WebhookResponse {
+        received: true,
+        processed: true,
+        message: "Webhook processed successfully".to_string(),
+    })
+}

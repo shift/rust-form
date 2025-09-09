@@ -1,8 +1,8 @@
-use crate::error::{Error, Result};
 use crate::component::{ComponentManifest, ComponentUri};
+use crate::error::{Error, Result};
+use semver::{Version, VersionReq};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::str::FromStr;
-use semver::{Version, VersionReq};
 
 #[derive(Debug, Clone)]
 pub struct DependencyResolver {
@@ -48,7 +48,7 @@ impl DependencyResolver {
 
         // Convert dependency map to resolvable nodes
         let mut nodes = HashMap::new();
-        
+
         // For now, we'll primarily handle rust dependencies
         // TODO: Extend to handle more complex dependency structures
         for dep_line in &manifest.dependencies.rust {
@@ -56,43 +56,51 @@ impl DependencyResolver {
             if let Some(eq_pos) = dep_line.find('=') {
                 let dep_name = dep_line[..eq_pos].trim().to_string();
                 let version_part = dep_line[eq_pos + 1..].trim();
-                
+
                 // Extract version from various formats
-                let version_constraint = if version_part.starts_with('"') && version_part.ends_with('"') {
-                    // Simple version like "0.7"
-                    version_part.trim_matches('"').to_string()
-                } else if version_part.contains("version") {
-                    // Complex format like { version = "0.7", features = [...] }
-                    // Extract just the version part
-                    if let Some(version_start) = version_part.find("version") {
-                        let after_version = &version_part[version_start + 7..];
-                        if let Some(quote_start) = after_version.find('"') {
-                            let after_quote = &after_version[quote_start + 1..];
-                            if let Some(quote_end) = after_quote.find('"') {
-                                after_quote[..quote_end].to_string()
+                let version_constraint =
+                    if version_part.starts_with('"') && version_part.ends_with('"') {
+                        // Simple version like "0.7"
+                        version_part.trim_matches('"').to_string()
+                    } else if version_part.contains("version") {
+                        // Complex format like { version = "0.7", features = [...] }
+                        // Extract just the version part
+                        if let Some(version_start) = version_part.find("version") {
+                            let after_version = &version_part[version_start + 7..];
+                            if let Some(quote_start) = after_version.find('"') {
+                                let after_quote = &after_version[quote_start + 1..];
+                                if let Some(quote_end) = after_quote.find('"') {
+                                    after_quote[..quote_end].to_string()
+                                } else {
+                                    continue; // Skip malformed entries
+                                }
                             } else {
-                                continue; // Skip malformed entries
+                                continue; // Skip entries without quotes
                             }
                         } else {
-                            continue; // Skip entries without quotes
+                            continue; // Skip entries without version
                         }
                     } else {
-                        continue; // Skip entries without version
-                    }
-                } else {
-                    continue; // Skip unrecognized formats
-                };
-                
+                        continue; // Skip unrecognized formats
+                    };
+
                 let uri = ComponentUri::from_str(&dep_name)?;
-                let version_req = VersionReq::parse(&version_constraint)
-                    .map_err(|e| Error::ValidationError(format!("Invalid version constraint '{}': {}", version_constraint, e)))?;
-                
-                nodes.insert(dep_name, DependencyNode {
-                    uri,
-                    version_req,
-                    resolved_version: None,
-                    manifest: None,
-                });
+                let version_req = VersionReq::parse(&version_constraint).map_err(|e| {
+                    Error::ValidationError(format!(
+                        "Invalid version constraint '{}': {}",
+                        version_constraint, e
+                    ))
+                })?;
+
+                nodes.insert(
+                    dep_name,
+                    DependencyNode {
+                        uri,
+                        version_req,
+                        resolved_version: None,
+                        manifest: None,
+                    },
+                );
             }
         }
 
@@ -112,7 +120,7 @@ impl DependencyResolver {
         graph: &mut DependencyGraph,
     ) -> Result<()> {
         let mut queue = VecDeque::new();
-        
+
         // Initialize queue with direct dependencies
         for name in nodes.keys() {
             queue.push_back(name.clone());
@@ -132,7 +140,7 @@ impl DependencyResolver {
             // For now, we'll use a simple resolution strategy:
             // Pick the latest version that satisfies the constraint
             let resolved_version = self.resolve_version_constraint(&node.uri, &node.version_req)?;
-            
+
             // Create resolved dependency
             let resolved = ResolvedDependency {
                 uri: node.uri.clone(),
@@ -163,7 +171,7 @@ impl DependencyResolver {
         // 1. Fetch available versions from the component source
         // 2. Find the best matching version that satisfies the constraint
         // 3. Consider pre-release preferences, etc.
-        
+
         // For now, return a mock version that satisfies basic constraints
         let req_string = version_req.to_string();
         if req_string.starts_with('^') {
@@ -181,7 +189,10 @@ impl DependencyResolver {
         } else {
             // Try to parse as exact version
             Version::parse(&req_string).map_err(|e| {
-                Error::ValidationError(format!("Could not resolve version constraint '{}': {}", version_req, e))
+                Error::ValidationError(format!(
+                    "Could not resolve version constraint '{}': {}",
+                    version_req, e
+                ))
             })
         }
     }
@@ -274,7 +285,7 @@ impl DependencyResolver {
     pub fn validate_resolution(&self, graph: &DependencyGraph) -> Result<()> {
         // Check for version conflicts
         let mut version_map: HashMap<String, Vec<&Version>> = HashMap::new();
-        
+
         for (_name, resolved) in &graph.resolved {
             version_map
                 .entry(resolved.uri.path.clone())
@@ -333,24 +344,47 @@ mod tests {
     #[test]
     fn test_simple_dependency_resolution() {
         let resolver = DependencyResolver::new();
-        
+
         let mut manifest = ComponentManifest {
             name: "test-component".to_string(),
             version: "1.0.0".to_string(),
-            description: None,
-            author: None,
-            license: None,
+            description: Some("Test component".to_string()),
+            author: Some("Test Author".to_string()),
+            license: Some("MIT".to_string()),
             homepage: None,
             repository: None,
-            keywords: vec![],
-            dependencies: HashMap::new(),
-            provides: ComponentInterface::default(),
+            keywords: Vec::new(),
+            category: Some("general".to_string()),
+            subcategory: None,
+            priority: Some("medium".to_string()),
+            complexity: Some("medium".to_string()),
+            api_compatibility: crate::component::manifest::ApiCompatibility {
+                api_version: "0.1.0".to_string(),
+                min_version: "0.1.0".to_string(),
+                max_version: Some("0.2.0".to_string()),
+                required_features: None,
+                experimental: None,
+            },
+            dependencies: crate::component::manifest::ComponentDependencies::default(),
+            provides: Some(ComponentInterface::default()),
+            config_schema: None,
+            compliance: None,
+            tests: None,
+            documentation: None,
+            features: None,
+            templates: None,
             integrity: None,
-            files: vec![],
+            files: Vec::new(),
         };
 
-        manifest.dependencies.insert("rust-form/ui-kit".to_string(), "^1.0.0".to_string());
-        manifest.dependencies.insert("github:org/utils".to_string(), "~2.1.0".to_string());
+        manifest
+            .dependencies
+            .rust
+            .push("sqlx = \"0.7\"".to_string());
+        manifest
+            .dependencies
+            .rust
+            .push("tokio = { version = \"1.0\", features = [\"full\"] }".to_string());
 
         let result = resolver.resolve_dependencies(&manifest);
         assert!(result.is_ok());
@@ -364,7 +398,7 @@ mod tests {
     #[test]
     fn test_version_constraint_parsing() {
         let resolver = DependencyResolver::new();
-        
+
         // Test various version constraint formats
         let constraints = vec![
             ("^1.2.3", true),
@@ -377,7 +411,11 @@ mod tests {
         for (constraint, should_work) in constraints {
             let version_req = VersionReq::parse(constraint);
             if should_work {
-                assert!(version_req.is_ok(), "Should parse constraint: {}", constraint);
+                assert!(
+                    version_req.is_ok(),
+                    "Should parse constraint: {}",
+                    constraint
+                );
             } else {
                 // Some constraints may not be supported yet
             }

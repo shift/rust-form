@@ -1,0 +1,4 @@
+# Example 2 for dunning-management
+project_name: example_2
+components:
+  dunning-management: "path:../"

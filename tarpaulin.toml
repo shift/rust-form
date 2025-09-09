@@ -1,0 +1,61 @@
+[package.metadata.tarpaulin]
+# Coverage configuration for tarpaulin
+
+# Exclude generated code and test files from coverage
+exclude_files = [
+    "generated/*",
+    "*/generated/*",
+    "target/*",
+    "tests/*",
+    "benches/*",
+    "examples/*",
+    "*/_test.rs",
+    "*/test_*.rs",
+    "*/tests.rs",
+]
+
+# Include integration tests in coverage
+run-types = ["Tests"]
+
+# Output formats
+output-formats = ["Html", "Lcov", "Json"]
+
+# Coverage targets
+fail-under = 80
+
+# Timeout for tests (in seconds)
+timeout = 120
+
+# Include all workspace members
+all-features = true
+workspace = true
+
+# Engine configuration
+engine = "llvm"
+
+# Exclude test functions from coverage
+exclude-test-functions = true
+
+# Follow symbolic links
+follow-exec = true
+
+# Count hits (not just covered/uncovered)
+count = true
+
+# Output directories
+output-dir = "coverage"
+
+# Verbose output for debugging
+# verbose = true
+
+# Include ignored tests
+# ignored = true
+
+# Branch coverage (when supported)
+branch = true
+
+# Forward signals to test process
+forward = true
+
+# Clean up coverage data between runs
+clean = true

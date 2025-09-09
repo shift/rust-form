@@ -1,0 +1,42 @@
+name: jwt-authentication
+version: "1.0.0"
+description: "JWT-based authentication with token management"
+author: rust-form
+homepage: "https://github.com/rust-form/jwt-authentication"
+keywords:
+  - auth
+  - rust-form
+  - component
+
+api_compatibility:
+  api_version: "0.1.0"
+  min_version: "0.1.0"
+  max_version: "0.2.0"
+  experimental: false
+
+dependencies: {}
+
+files:
+  - "handlers.rs.tera"
+  - "models.rs.tera"
+  - "middleware.rs.tera"
+
+provides:
+  templates:
+    - name: "handlers.rs.tera"
+      path: "handlers.rs.tera"
+      description: "Jwt-Authentication request handlers"
+      variables: []
+      target: Backend
+    - name: "models.rs.tera"
+      path: "models.rs.tera"
+      description: "Jwt-Authentication data models"
+      variables: []
+      target: Backend
+    - name: "middleware.rs.tera"
+      path: "middleware.rs.tera"
+      description: "Jwt-Authentication middleware"
+      variables: []
+      target: Backend
+  assets: []
+  hooks: []

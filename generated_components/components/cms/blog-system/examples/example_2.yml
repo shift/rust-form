@@ -1,0 +1,4 @@
+# Example 2 for blog-system
+project_name: example_2
+components:
+  blog-system: "path:../"

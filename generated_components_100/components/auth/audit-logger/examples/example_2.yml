@@ -1,0 +1,4 @@
+# Example 2 for audit-logger
+project_name: example_2
+components:
+  audit-logger: "path:../"

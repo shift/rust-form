@@ -1,0 +1,4 @@
+# Example 2 for api-key-manager
+project_name: example_2
+components:
+  api-key-manager: "path:../"

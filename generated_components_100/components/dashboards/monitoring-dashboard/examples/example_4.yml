@@ -1,0 +1,4 @@
+# Example 4 for monitoring-dashboard
+project_name: example_4
+components:
+  monitoring-dashboard: "path:../"

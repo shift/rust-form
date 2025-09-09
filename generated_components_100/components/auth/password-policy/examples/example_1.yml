@@ -1,0 +1,4 @@
+# Example 1 for password-policy
+project_name: example_1
+components:
+  password-policy: "path:../"

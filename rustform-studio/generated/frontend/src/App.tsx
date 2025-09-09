@@ -1,5 +1,6 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ComponentBrowser } from './components/ComponentBrowser';
 
 const queryClient = new QueryClient();
 
@@ -7,8 +8,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="App">
-        <h1>rustform_studio App</h1>
-        <p>Frontend generated with Rust-form</p>
+        <ComponentBrowser />
       </div>
     </QueryClientProvider>
   );

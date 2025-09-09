@@ -1,0 +1,95 @@
+use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, SqlitePool};
+use chrono::{DateTime, Utc};
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct JwtAuthentication {
+    pub id: i64,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl JwtAuthentication {
+    /// Create a new jwt authentication
+    pub async fn create(
+        pool: &SqlitePool,
+        name: String,
+    ) -> Result<Self, sqlx::Error> {
+        let row = sqlx::query_as!(
+            Self,
+            r#"
+            INSERT INTO jwt_authentication (name, created_at, updated_at)
+            VALUES (?1, ?2, ?2)
+            RETURNING id, name, created_at, updated_at
+            "#,
+            name,
+            Utc::now()
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    /// Find jwt authentication by ID
+    pub async fn find_by_id(
+        pool: &SqlitePool,
+        id: i64,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        let row = sqlx::query_as!(
+            Self,
+            "SELECT id, name, created_at, updated_at FROM jwt_authentication WHERE id = ?1",
+            id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    /// Update jwt authentication
+    pub async fn update(
+        &mut self,
+        pool: &SqlitePool,
+        name: String,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"
+            UPDATE jwt_authentication
+            SET name = ?1, updated_at = ?2
+            WHERE id = ?3
+            "#,
+            name,
+            Utc::now(),
+            self.id
+        )
+        .execute(pool)
+        .await?;
+
+        self.name = name;
+        self.updated_at = Utc::now();
+        Ok(())
+    }
+
+    /// Delete jwt authentication
+    pub async fn delete(pool: &SqlitePool, id: i64) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!("DELETE FROM jwt_authentication WHERE id = ?1", id)
+            .execute(pool)
+            .await?;
+
+        Ok(result.rows_affected())
+    }
+
+    /// List all jwt authentications
+    pub async fn list(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+        let rows = sqlx::query_as!(
+            Self,
+            "SELECT id, name, created_at, updated_at FROM jwt_authentication ORDER BY created_at DESC"
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows)
+    }
+}

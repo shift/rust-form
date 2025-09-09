@@ -4,12 +4,99 @@
 
 Rust-form is a code generation framework that creates complete, production-ready Rust web backends from YAML configuration files. It generates type-safe APIs with database integration, authentication, middleware, and frontend bindings.
 
+## Current Development Focus
+
+**Strategic Priority: Studio Development + Component Ecosystem**
+
+The project is transitioning from CLI-only tooling to a comprehensive platform with:
+
+1. **Rust-form Studio**: Visual component library management and drag-and-drop interface
+2. **Component Ecosystem**: Building hundreds of reusable components for rapid development
+3. **Component Testing Framework**: Production-ready quality assurance (✅ COMPLETED)
+
+### Component Testing Status
+- ✅ **Schema Validation**: All component manifests validate successfully
+- ✅ **Test Framework**: 5-phase testing pipeline with quality scoring (A+ to F grades)
+- ✅ **Test Execution**: Working Rust test discovery and execution
+- ✅ **Quality Assessment**: 0-100 scoring system with improvement suggestions
+- ✅ **Reference Implementation**: `test-component` with 10/10 tests passing, 65/100 quality score
+
+### Next Development Priorities
+1. **Studio Interface**: Visual component management and project builder
+2. **Component Library Scale**: Rapid generation of 100+ high-value components
+3. **Component Categories**: Auth, payments, dashboards, e-commerce, CMS, analytics
+4. **Component Marketplace**: Discovery and installation interface
+
+### Development Guidelines
+- **No Timeouts**: Let processes run to completion or investigate issues properly
+- **Quality Focus**: Use the component testing framework to maintain standards
+- **Studio First**: Prioritize visual tools over CLI-only workflows for user adoption
+- **Component Scale**: Build ecosystem breadth for network effects
+
 ## Architecture
 
 The project is organized as a Rust workspace with three main crates:
-- `rustform-cli`: Command-line interface for project management
+- `rustform-cli`: Command-line interface for project management (includes component testing)
 - `rustform-core`: Core configuration parsing and validation logic  
 - `rustform-codegen`: Template-based code generation engine
+- `rustform-studio`: Visual interface for component management and project building
+
+## Component System Architecture
+
+### Component Testing Framework
+```bash
+# Test a component with full 5-phase pipeline
+rustform component test path/to/component
+
+# Generate test application (integration testing)
+rustform component test path/to/component --generate-test-app
+```
+
+**Testing Phases:**
+1. **Manifest Validation**: Schema compliance and required fields
+2. **Compatibility Check**: API version compatibility with rust-form
+3. **Unit Tests**: Discover and run component tests (Rust + JS/TS)
+4. **Test Application Generation**: Create and build integration test project
+5. **Quality Assessment**: Comprehensive scoring with improvement suggestions
+
+### Component Quality Metrics
+- **Grade A+ (90-100)**: Excellent - Production ready with comprehensive tests
+- **Grade A (80-89)**: Very Good - Minor improvements needed
+- **Grade B (70-79)**: Good - Some areas need attention
+- **Grade C (60-69)**: Fair - Notable improvements required
+- **Grade D (50-59)**: Poor - Significant work needed
+- **Grade F (0-49)**: Needs Improvement - Major issues to address
+
+### Component Manifest Schema
+```yaml
+name: component-name
+version: "1.0.0"
+description: "Component description"
+author: "author-name"
+homepage: "https://github.com/..."
+
+api_compatibility:
+  api_version: "0.1.0"
+  min_version: "0.1.0"
+  max_version: "0.2.0"
+  experimental: false
+
+dependencies: {}
+
+files:
+  - "template1.tera"
+  - "template2.tera"
+
+provides:
+  templates:
+    - name: "template1.tera"
+      path: "template1.tera"
+      description: "Template description"
+      variables: []
+      target: Frontend|Backend
+  assets: []
+  hooks: []
+```
 
 ## How to Use Rust-form
 
@@ -75,6 +162,9 @@ This creates a complete Rust project with:
 Rust-form supports reusable components for common functionality:
 
 ```bash
+# Test a component
+rustform component test examples/components/ui-kit
+
 # Install a component
 rustform component install auth/jwt-manager
 
@@ -86,6 +176,31 @@ rustform component generate auth
 ```
 
 ## Key Configuration Sections
+
+### Component Integration
+
+Use components in your projects:
+
+```yaml
+project_name: my_app
+version: "0.1.0"
+
+# Component dependencies (top-level)
+components:
+  ui-kit: "path:./components/ui-kit"
+  auth-system: "github:rust-form/auth-jwt@v1.0.0"
+
+database:
+  type: postgres
+  url_env: DATABASE_URL
+
+api:
+  models:
+    User:
+      # Use component templates in generation
+      template_overrides:
+        user_model: "components/auth-system/user.rs.tera"
+```
 
 ### Versioning
 
@@ -217,6 +332,9 @@ cargo run
 ### 3. Component Integration
 
 ```bash
+# Test component quality
+rustform component test path/to/component
+
 # Add authentication
 rustform component install auth/jwt-manager
 
@@ -231,6 +349,7 @@ rustform generate config.yml
 
 - `rustform new <name>`: Create new project template
 - `rustform generate <config.yml>`: Generate code from configuration
+- `rustform component test <path>`: Test component with 5-phase pipeline
 - `rustform component list`: List available components
 - `rustform component install <uri>`: Install component
 - `rustform validate <config.yml>`: Validate configuration
@@ -250,8 +369,10 @@ my-project/
 │   └── error.rs          # Error handling
 ├── migrations/           # Database migrations
 ├── frontend/            # Generated frontend code (if enabled)
+├── components/          # Component library cache
 ├── .env.example         # Environment variables template
 ├── Cargo.toml           # Rust dependencies
+├── rustform.lock        # Component version lock file
 └── README.md            # Project documentation
 ```
 
@@ -276,22 +397,60 @@ api:
 
 ### Component Development
 
-Create reusable components:
+Create reusable components with proper testing:
 
 ```yaml
 # rustform-component.yml
 name: jwt-auth
-category: auth
+version: "1.0.0"
+description: "JWT authentication component"
+author: "rust-form"
+
 api_compatibility:
   api_version: "0.1.0"
   min_version: "0.1.0"
   max_version: "0.2.0"
+  experimental: false
 
-templates:
-  - name: auth_handler
-    path: auth/jwt_handler.rs.tera
-  - name: middleware  
-    path: auth/jwt_middleware.rs.tera
+files:
+  - "auth_handler.rs.tera"
+  - "jwt_middleware.rs.tera"
+
+provides:
+  templates:
+    - name: "auth_handler.rs.tera"
+      path: "auth_handler.rs.tera"
+      description: "JWT authentication handler"
+      target: Backend
+    - name: "jwt_middleware.rs.tera"
+      path: "jwt_middleware.rs.tera"
+      description: "JWT middleware"
+      target: Backend
+```
+
+### Component Testing
+
+Components should include comprehensive tests:
+
+```rust
+// src/component_test.rs
+#[cfg(test)]
+mod jwt_auth_tests {
+    #[test]
+    fn test_jwt_validation() {
+        // Test JWT token validation logic
+    }
+    
+    #[test]
+    fn test_middleware_integration() {
+        // Test middleware integration
+    }
+    
+    #[test]
+    fn test_template_rendering() {
+        // Test that templates render correctly
+    }
+}
 ```
 
 ### Registry Configuration (Feature Flagged)
@@ -330,6 +489,9 @@ cargo test
 # Test specific configuration
 rustform validate examples/ecommerce.yml
 
+# Test component quality and integration
+rustform component test examples/components/ui-kit
+
 # Test component installation
 rustform component install --dry-run auth/jwt-manager
 ```
@@ -354,6 +516,19 @@ rustform validate --warn-deprecated config.yml
 rustform migrate-config config.yml --to 2.0.0
 ```
 
+### Component Quality Management
+
+```bash
+# Assess component quality
+rustform component test path/to/component
+
+# Batch test multiple components
+find components/ -name "rustform-component.yml" -exec rustform component test {} \;
+
+# Generate quality report
+rustform component report --output quality-report.json
+```
+
 ### Troubleshooting
 
 Common issues:
@@ -361,6 +536,7 @@ Common issues:
 - Schema validation: Check field types and required properties
 - Component conflicts: Verify component compatibility versions
 - Database connections: Ensure environment variables are set
+- Component quality: Use testing framework to identify issues
 
 ## Examples
 
@@ -368,14 +544,24 @@ See the `examples/` directory for complete configurations:
 - `examples/todo.yml`: Simple CRUD API
 - `examples/ecommerce.yml`: Complex e-commerce backend
 - `examples/blog.yml`: Content management system
+- `examples/component-demo.yml`: Component integration example
+
+### Component Examples
+
+See `examples/components/` for reference components:
+- `examples/components/ui-kit/`: Frontend UI components with tests
+- `components/backend/compliance/gdpr-data-subject-rights/`: GDPR compliance
+- `components/backend/observability/`: Monitoring and metrics
 
 ## Contributing
 
-1. Check existing component compatibility with `api_version`
-2. Follow semantic versioning for configuration changes
-3. Update `schema_version` for breaking format changes
-4. Add tests for new validation rules
-5. Update this guide for new features
+1. **Component Development**: Use testing framework for quality assurance
+2. **Studio Development**: Focus on visual interface and user experience
+3. **API Compatibility**: Follow semantic versioning for `api_version`
+4. **Schema Changes**: Update `schema_version` for breaking format changes
+5. **Component Quality**: Aim for Grade A+ (90-100) quality scores
+6. **Testing**: Include comprehensive tests with all new components
+7. **Documentation**: Update component manifests and this guide
 
 ## Getting Help
 
@@ -383,3 +569,4 @@ See the `examples/` directory for complete configurations:
 - Documentation: Check `docs/` for detailed guides
 - Examples: Review `examples/` for usage patterns
 - CLI Help: Run `rustform --help` for command reference
+- Component Testing: Use `rustform component test` for quality assessment

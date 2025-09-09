@@ -1,0 +1,13 @@
+[package]
+name = "jwt-authentication"
+version = "1.0.0"
+edition = "2021"
+description = "Jwt Authentication component for rust-form"
+
+[workspace]
+
+[lib]
+name = "jwt_authentication"
+path = "src/lib_test.rs"
+
+[dependencies]

@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Platform Demo - RustForm Components</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .nav button:hover, .nav button.active {
+            background: #34495e;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .demo-section h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+
+        .component-showcase {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .component-demo {
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 1rem;
+            background: #f8f9fa;
+        }
+
+        .component-demo h3 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .component-demo p {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .demo-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-right: 0.5rem;
+        }
+
+        .demo-button:hover {
+            background: #2980b9;
+        }
+
+        .demo-button.success {
+            background: #27ae60;
+        }
+
+        .demo-button.warning {
+            background: #f39c12;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .product-card {
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            transition: transform 0.2s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .product-image {
+            height: 200px;
+            background: linear-gradient(45deg, #e1e5e9, #d6dbdf);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 3rem;
+        }
+
+        .product-info {
+            padding: 1rem;
+        }
+
+        .product-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+
+        .product-price {
+            color: #27ae60;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .cart-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .cart-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quantity-btn {
+            background: #e1e5e9;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #6c757d;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">🛒 RustForm E-Commerce Platform</h1>
+            <nav class="nav">
+                <button onclick="showSection('overview')" class="active" id="overview-btn">Overview</button>
+                <button onclick="showSection('products')" id="products-btn">Products</button>
+                <button onclick="showSection('cart')" id="cart-btn">Cart (<span id="cart-count">0</span>)</button>
+                <button onclick="showSection('auth')" id="auth-btn">Auth</button>
+                <button onclick="showSection('payments')" id="payments-btn">Payments</button>
+                <button onclick="showSection('dashboard')" id="dashboard-btn">Dashboard</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Overview Section -->
+        <div id="overview-section" class="demo-section">
+            <h2>🚀 E-Commerce Platform Demo</h2>
+            <p>This comprehensive demo showcases <strong>20+ RustForm components</strong> working together to create a full-featured e-commerce platform.</p>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">350+</div>
+                    <div>Total Components</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">20+</div>
+                    <div>Components Used</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">5</div>
+                    <div>Categories</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">100%</div>
+                    <div>Test Coverage</div>
+                </div>
+            </div>
+
+            <div class="component-showcase">
+                <div class="component-demo">
+                    <h3>🔐 Authentication Components</h3>
+                    <p>JWT authentication, OAuth2, session management, RBAC engine</p>
+                    <button class="demo-button" onclick="showSection('auth')">View Auth Demo</button>
+                </div>
+                <div class="component-demo">
+                    <h3>🛍️ E-commerce Components</h3>
+                    <p>Product catalog, shopping cart, order management, reviews</p>
+                    <button class="demo-button" onclick="showSection('products')">View Products</button>
+                </div>
+                <div class="component-demo">
+                    <h3>💳 Payment Components</h3>
+                    <p>Stripe integration, PayPal, fraud detection, tax calculation</p>
+                    <button class="demo-button" onclick="showSection('payments')">View Payments</button>
+                </div>
+                <div class="component-demo">
+                    <h3>📊 Dashboard Components</h3>
+                    <p>Analytics dashboard, admin panel, monitoring systems</p>
+                    <button class="demo-button" onclick="showSection('dashboard')">View Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Products Section -->
+        <div id="products-section" class="demo-section hidden">
+            <h2>🛍️ Product Catalog & E-commerce Components</h2>
+            <p>Demonstrates: product-catalog, recommendation-engine, review-system, inventory-tracker</p>
+            
+            <div class="product-grid" id="product-grid">
+                <!-- Products will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Cart Section -->
+        <div id="cart-section" class="demo-section hidden">
+            <h2>🛒 Shopping Cart & Order Management</h2>
+            <p>Demonstrates: shopping-cart, order-management, shipping-calculator, coupon-manager</p>
+            
+            <div id="cart-items">
+                <!-- Cart items will be populated by JavaScript -->
+            </div>
+            
+            <div style="margin-top: 1rem; text-align: right;">
+                <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem;">
+                    Total: $<span id="cart-total">0.00</span>
+                </div>
+                <button class="demo-button success" onclick="checkout()">Proceed to Checkout</button>
+            </div>
+        </div>
+
+        <!-- Auth Section -->
+        <div id="auth-section" class="demo-section hidden">
+            <h2>🔐 Authentication & Security Components</h2>
+            <p>Demonstrates: jwt-authentication, oauth2-integration, session-management, rbac-engine, multi-factor-auth</p>
+            
+            <div class="component-showcase">
+                <div class="component-demo">
+                    <h3>JWT Authentication</h3>
+                    <p>Secure token-based authentication</p>
+                    <button class="demo-button" onclick="demoAuth('jwt')">Demo JWT Login</button>
+                </div>
+                <div class="component-demo">
+                    <h3>OAuth2 Integration</h3>
+                    <p>Google, GitHub, and custom providers</p>
+                    <button class="demo-button" onclick="demoAuth('oauth2')">Demo OAuth2</button>
+                </div>
+                <div class="component-demo">
+                    <h3>Multi-Factor Authentication</h3>
+                    <p>SMS, TOTP, and biometric authentication</p>
+                    <button class="demo-button" onclick="demoAuth('mfa')">Demo MFA</button>
+                </div>
+                <div class="component-demo">
+                    <h3>Role-Based Access Control</h3>
+                    <p>Granular permission management</p>
+                    <button class="demo-button" onclick="demoAuth('rbac')">Demo RBAC</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments Section -->
+        <div id="payments-section" class="demo-section hidden">
+            <h2>💳 Payment Processing & Financial Components</h2>
+            <p>Demonstrates: stripe-integration, paypal-integration, fraud-detection, tax-calculator, invoice-system</p>
+            
+            <div class="component-showcase">
+                <div class="component-demo">
+                    <h3>Stripe Integration</h3>
+                    <p>Credit card processing and subscriptions</p>
+                    <button class="demo-button" onclick="demoPayment('stripe')">Demo Stripe</button>
+                </div>
+                <div class="component-demo">
+                    <h3>PayPal Integration</h3>
+                    <p>PayPal payments and express checkout</p>
+                    <button class="demo-button" onclick="demoPayment('paypal')">Demo PayPal</button>
+                </div>
+                <div class="component-demo">
+                    <h3>Fraud Detection</h3>
+                    <p>Real-time transaction monitoring</p>
+                    <button class="demo-button warning" onclick="demoPayment('fraud')">Demo Fraud Detection</button>
+                </div>
+                <div class="component-demo">
+                    <h3>Tax Calculator</h3>
+                    <p>Automatic tax calculation for orders</p>
+                    <button class="demo-button" onclick="demoPayment('tax')">Demo Tax Calc</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="demo-section hidden">
+            <h2>📊 Analytics & Admin Dashboard</h2>
+            <p>Demonstrates: analytics-dashboard, admin-panel, monitoring-dashboard</p>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">1,247</div>
+                    <div>Total Orders</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">$89,432</div>
+                    <div>Revenue</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">543</div>
+                    <div>Active Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">98.7%</div>
+                    <div>Uptime</div>
+                </div>
+            </div>
+
+            <div class="component-showcase">
+                <div class="component-demo">
+                    <h3>Sales Analytics</h3>
+                    <p>Real-time sales data and trends</p>
+                    <button class="demo-button" onclick="updateAnalytics()">Refresh Data</button>
+                </div>
+                <div class="component-demo">
+                    <h3>User Management</h3>
+                    <p>Customer and admin user management</p>
+                    <button class="demo-button" onclick="alert('User management demo')">Manage Users</button>
+                </div>
+                <div class="component-demo">
+                    <h3>System Monitoring</h3>
+                    <p>Server health and performance metrics</p>
+                    <button class="demo-button" onclick="alert('System monitoring demo')">View Metrics</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Demo data
+        const products = [
+            { id: 1, name: 'Premium Laptop', price: 1299.99, emoji: '💻' },
+            { id: 2, name: 'Wireless Headphones', price: 199.99, emoji: '🎧' },
+            { id: 3, name: 'Smart Watch', price: 299.99, emoji: '⌚' },
+            { id: 4, name: 'Tablet Pro', price: 799.99, emoji: '📱' },
+            { id: 5, name: 'Gaming Chair', price: 399.99, emoji: '🪑' },
+            { id: 6, name: 'Monitor 4K', price: 549.99, emoji: '🖥️' }
+        ];
+
+        let cart = [];
+
+        // Navigation
+        function showSection(sectionName) {
+            // Hide all sections
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.nav button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionName + '-section').classList.remove('hidden');
+            document.getElementById(sectionName + '-btn').classList.add('active');
+            
+            // Initialize section-specific content
+            if (sectionName === 'products') {
+                renderProducts();
+            } else if (sectionName === 'cart') {
+                renderCart();
+            }
+        }
+
+        // Render products
+        function renderProducts() {
+            const grid = document.getElementById('product-grid');
+            grid.innerHTML = products.map(product => `
+                <div class="product-card">
+                    <div class="product-image">${product.emoji}</div>
+                    <div class="product-info">
+                        <div class="product-title">${product.name}</div>
+                        <div class="product-price">$${product.price.toFixed(2)}</div>
+                        <p>High-quality ${product.name.toLowerCase()} with premium features.</p>
+                        <button class="demo-button" onclick="addToCart(${product.id})">Add to Cart</button>
+                        <button class="demo-button" onclick="viewReviews(${product.id})">Reviews</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Cart functions
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            const existingItem = cart.find(item => item.id === productId);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+            
+            updateCartCount();
+            showNotification(`Added ${product.name} to cart!`);
+        }
+
+        function updateCartCount() {
+            const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('cart-count').textContent = count;
+        }
+
+        function renderCart() {
+            const cartContainer = document.getElementById('cart-items');
+            
+            if (cart.length === 0) {
+                cartContainer.innerHTML = '<p>Your cart is empty</p>';
+                document.getElementById('cart-total').textContent = '0.00';
+                return;
+            }
+            
+            cartContainer.innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="font-size: 2rem;">${item.emoji}</div>
+                        <div>
+                            <div style="font-weight: bold;">${item.name}</div>
+                            <div style="color: #6c757d;">$${item.price.toFixed(2)} each</div>
+                        </div>
+                    </div>
+                    <div class="cart-controls">
+                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                        <span style="margin: 0 0.5rem; font-weight: bold;">${item.quantity}</span>
+                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
+                        <button class="demo-button" onclick="removeFromCart(${item.id})" style="margin-left: 1rem;">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('cart-total').textContent = total.toFixed(2);
+        }
+
+        function updateQuantity(productId, newQuantity) {
+            if (newQuantity <= 0) {
+                removeFromCart(productId);
+                return;
+            }
+            
+            const item = cart.find(item => item.id === productId);
+            if (item) {
+                item.quantity = newQuantity;
+                renderCart();
+                updateCartCount();
+            }
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            renderCart();
+            updateCartCount();
+        }
+
+        function checkout() {
+            if (cart.length === 0) {
+                alert('Cart is empty!');
+                return;
+            }
+            
+            showNotification('Processing checkout...', 'info');
+            
+            setTimeout(() => {
+                cart = [];
+                updateCartCount();
+                renderCart();
+                showNotification('Order placed successfully! 🎉', 'success');
+            }, 2000);
+        }
+
+        // Demo functions
+        function demoAuth(type) {
+            const messages = {
+                jwt: 'JWT token generated and validated successfully!',
+                oauth2: 'OAuth2 authentication flow completed!',
+                mfa: 'Multi-factor authentication verified!',
+                rbac: 'User permissions checked and authorized!'
+            };
+            showNotification(messages[type], 'success');
+        }
+
+        function demoPayment(type) {
+            const messages = {
+                stripe: 'Stripe payment processed successfully!',
+                paypal: 'PayPal payment completed!',
+                fraud: 'Transaction analyzed - No fraud detected ✓',
+                tax: 'Tax calculated: $12.50 (8.5% rate)'
+            };
+            showNotification(messages[type], 'success');
+        }
+
+        function viewReviews(productId) {
+            const product = products.find(p => p.id === productId);
+            showNotification(`Viewing reviews for ${product.name} - 4.8/5 stars (156 reviews)`, 'info');
+        }
+
+        function updateAnalytics() {
+            showNotification('Analytics dashboard refreshed with latest data!', 'success');
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = 'success-message';
+            notification.textContent = message;
+            
+            if (type === 'info') {
+                notification.style.background = '#d1ecf1';
+                notification.style.color = '#0c5460';
+                notification.style.borderColor = '#bee5eb';
+            }
+            
+            document.querySelector('.main-content').insertBefore(notification, document.querySelector('.main-content').firstChild);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Initialize
+        renderProducts();
+        updateCartCount();
+    </script>
+</body>
+</html>

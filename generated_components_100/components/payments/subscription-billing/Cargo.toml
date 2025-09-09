@@ -1,0 +1,15 @@
+[package]
+name = "subscription-billing"
+version = "1.0.0"
+edition = "2021"
+
+[workspace]
+
+[lib]
+name = "subscription_billing"
+path = "src/lib_test.rs"
+
+[dependencies]
+stripe = "0.28"
+hmac = "0.12"
+sha2 = "0.10"

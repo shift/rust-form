@@ -1,0 +1,4 @@
+# Example 1 for review-system
+project_name: example_1
+components:
+  review-system: "path:../"

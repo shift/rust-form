@@ -1,7 +1,7 @@
+use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
-use crate::error::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ComponentUri {
@@ -13,12 +13,12 @@ pub struct ComponentUri {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum UriScheme {
-    Registry,    // rust-form/react-crud@^2.0.0
-    Git,         // git+https://github.com/org/repo@v1.2.3
-    GitHub,      // github:org/repo@v1.2.3
-    GitLab,      // gitlab:org/repo@v1.2.3
-    Path,        // path:./local/component
-    File,        // file:///absolute/path/to/component
+    Registry, // rust-form/react-crud@^2.0.0
+    Git,      // git+https://github.com/org/repo@v1.2.3
+    GitHub,   // github:org/repo@v1.2.3
+    GitLab,   // gitlab:org/repo@v1.2.3
+    Path,     // path:./local/component
+    File,     // file:///absolute/path/to/component
 }
 
 impl ComponentUri {
@@ -43,39 +43,38 @@ impl ComponentUri {
 
     pub fn resolve_url(&self) -> Result<String> {
         match &self.scheme {
-            UriScheme::Registry => {
-                Ok(format!("https://registry.rust-form.dev/{}", self.path))
-            }
+            UriScheme::Registry => Ok(format!("https://registry.rust-form.dev/{}", self.path)),
             UriScheme::Git => {
                 if self.path.starts_with("https://") || self.path.starts_with("http://") {
                     Ok(self.path.clone())
                 } else {
-                    Err(Error::ValidationError(
-                        format!("Invalid git URL: {}", self.path)
-                    ))
+                    Err(Error::ValidationError(format!(
+                        "Invalid git URL: {}",
+                        self.path
+                    )))
                 }
             }
             UriScheme::GitHub => {
                 let parts: Vec<&str> = self.path.split('/').collect();
                 if parts.len() != 2 {
-                    return Err(Error::ValidationError(
-                        format!("GitHub URI must be in format 'org/repo': {}", self.path)
-                    ));
+                    return Err(Error::ValidationError(format!(
+                        "GitHub URI must be in format 'org/repo': {}",
+                        self.path
+                    )));
                 }
                 Ok(format!("https://github.com/{}/{}", parts[0], parts[1]))
             }
             UriScheme::GitLab => {
                 let parts: Vec<&str> = self.path.split('/').collect();
                 if parts.len() != 2 {
-                    return Err(Error::ValidationError(
-                        format!("GitLab URI must be in format 'org/repo': {}", self.path)
-                    ));
+                    return Err(Error::ValidationError(format!(
+                        "GitLab URI must be in format 'org/repo': {}",
+                        self.path
+                    )));
                 }
                 Ok(format!("https://gitlab.com/{}/{}", parts[0], parts[1]))
             }
-            UriScheme::Path | UriScheme::File => {
-                Ok(self.path.clone())
-            }
+            UriScheme::Path | UriScheme::File => Ok(self.path.clone()),
         }
     }
 
@@ -121,16 +120,17 @@ impl FromStr for ComponentUri {
             let path_str = &main_part[colon_pos + 1..];
 
             let scheme = match scheme_str {
-                "git+https" | "git+http" => {
-                    UriScheme::Git
-                }
+                "git+https" | "git+http" => UriScheme::Git,
                 "github" => UriScheme::GitHub,
                 "gitlab" => UriScheme::GitLab,
                 "path" => UriScheme::Path,
                 "file" => UriScheme::File,
-                _ => return Err(Error::ValidationError(
-                    format!("Unknown URI scheme: {}", scheme_str)
-                )),
+                _ => {
+                    return Err(Error::ValidationError(format!(
+                        "Unknown URI scheme: {}",
+                        scheme_str
+                    )))
+                }
             };
 
             let cleaned_path = if scheme == UriScheme::Git && path_str.starts_with("//") {
@@ -226,7 +226,7 @@ mod tests {
         let uri = ComponentUri::new(UriScheme::GitHub, "org/repo".to_string())
             .with_version("v1.0.0".to_string())
             .with_subpath("components".to_string());
-        
+
         assert_eq!(uri.to_string(), "github:org/repo@v1.0.0#components");
     }
 }

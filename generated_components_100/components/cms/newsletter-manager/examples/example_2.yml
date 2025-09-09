@@ -1,0 +1,4 @@
+# Example 2 for newsletter-manager
+project_name: example_2
+components:
+  newsletter-manager: "path:../"

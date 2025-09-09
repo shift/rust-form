@@ -10,9 +10,13 @@ pub struct InitCommand {
 
 impl InitCommand {
     pub fn new(name: Option<String>, directory: Option<PathBuf>, database: String) -> Self {
-        Self { name, directory, database }
+        Self {
+            name,
+            directory,
+            database,
+        }
     }
-    
+
     pub async fn execute(&self) -> Result<(), CliError> {
         // Determine project name
         let project_name = match &self.name {
@@ -29,31 +33,35 @@ impl InitCommand {
                 name
             }
         };
-        
+
         // Determine directory
-        let project_dir = self.directory.clone()
+        let project_dir = self
+            .directory
+            .clone()
             .unwrap_or_else(|| PathBuf::from(&project_name));
-        
+
         // Check if directory already exists
         if project_dir.exists() {
-            return Err(CliError::directory_exists(project_dir.display().to_string()));
+            return Err(CliError::directory_exists(
+                project_dir.display().to_string(),
+            ));
         }
-        
+
         info!("Initializing new rustform project: {}", project_name);
-        
+
         // Create project directory
         std::fs::create_dir_all(&project_dir)?;
-        
+
         // Create basic config.yml
         let config_content = self.create_config_template(&project_name);
         let config_path = project_dir.join("config.yml");
         std::fs::write(&config_path, config_content)?;
-        
+
         // Create .env.example
         let env_content = format!("DATABASE_URL=\"{}:database.db\"\n", self.database);
         let env_path = project_dir.join(".env.example");
         std::fs::write(&env_path, env_content)?;
-        
+
         info!("✅ Successfully initialized project: {}", project_name);
         println!("Initialized new rustform project: {}", project_name);
         println!("Directory: {}", project_dir.display());
@@ -62,29 +70,33 @@ impl InitCommand {
         println!("  cd {}", project_dir.display());
         println!("  # Edit config.yml to define your models and endpoints");
         println!("  rustform generate config.yml");
-        
+
         Ok(())
     }
-    
+
     fn validate_project_name(&self, name: &str) -> Result<(), CliError> {
         if name.is_empty() {
             return Err(CliError::invalid_project_name(name));
         }
-        
+
         // Check for valid Rust crate name
-        if !name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_') {
+        if !name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
+        {
             return Err(CliError::invalid_project_name(name));
         }
-        
+
         if name.starts_with('-') || name.ends_with('-') {
             return Err(CliError::invalid_project_name(name));
         }
-        
+
         Ok(())
     }
-    
+
     fn create_config_template(&self, project_name: &str) -> String {
-        format!(r#"project_name: {}
+        format!(
+            r#"project_name: {}
 version: "0.1.0"
 
 database:
@@ -123,6 +135,8 @@ middleware:
   - logger: true
   - cors:
       allow_origin: "*"
-"#, project_name, self.database)
+"#,
+            project_name, self.database
+        )
     }
 }

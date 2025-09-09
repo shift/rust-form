@@ -1,0 +1,4 @@
+# Example 2 for theme-manager
+project_name: example_2
+components:
+  theme-manager: "path:../"

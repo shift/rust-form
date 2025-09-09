@@ -1,0 +1,4 @@
+# Example 3 for customer-support
+project_name: example_3
+components:
+  customer-support: "path:../"

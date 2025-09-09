@@ -1,0 +1,33 @@
+// Stripe payment handler implementation template
+use stripe::{Client, CreatePaymentIntent, PaymentIntent, PaymentIntentConfirm};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct PaymentRequest {
+    pub amount: i64,
+    pub currency: String,
+    pub customer_id: Option<String>,
+}
+
+pub struct StripeHandler {
+    client: Client,
+}
+
+impl StripeHandler {
+    pub fn new(secret_key: &str) -> Self {
+        Self {
+            client: Client::new(secret_key),
+        }
+    }
+
+    pub async fn create_payment_intent(&self, request: PaymentRequest) -> Result<PaymentIntent, stripe::Error> {
+        let create_intent = CreatePaymentIntent {
+            amount: request.amount,
+            currency: stripe::Currency::from_str(&request.currency).unwrap_or(stripe::Currency::USD),
+            customer: request.customer_id,
+            ..Default::default()
+        };
+
+        PaymentIntent::create(&self.client, create_intent).await
+    }
+}

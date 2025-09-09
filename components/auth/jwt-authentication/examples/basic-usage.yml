@@ -1,0 +1,31 @@
+# Basic usage example for jwt-authentication
+project_name: jwt_authentication_example
+version: "0.1.0"
+
+components:
+  jwt-authentication: "path:../../../auth/jwt-authentication"
+
+database:
+  type: sqlite
+  url_env: DATABASE_URL
+
+api:
+  models:
+    Example:
+      table_name: examples
+      fields:
+        id:
+          type: integer
+          primary_key: true
+          auto_increment: true
+        name:
+          type: string
+          required: true
+
+  endpoints:
+    - path: /examples
+      model: Example
+      crud:
+        create: true
+        read_all: true
+        read_one: true

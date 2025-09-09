@@ -1,0 +1,4 @@
+# Example 3 for wishlist-manager
+project_name: example_3
+components:
+  wishlist-manager: "path:../"

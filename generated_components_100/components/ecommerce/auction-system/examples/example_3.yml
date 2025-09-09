@@ -1,0 +1,4 @@
+# Example 3 for auction-system
+project_name: example_3
+components:
+  auction-system: "path:../"

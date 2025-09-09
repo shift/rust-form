@@ -1,0 +1,37 @@
+import React from 'react';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+interface ChartComponentProps {
+  data: {
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      backgroundColor?: string;
+      borderColor?: string;
+      borderWidth?: number;
+    }[];
+  };
+  options?: any;
+}
+
+export const ChartComponent: React.FC<ChartComponentProps> = ({ data, options = {} }) => {
+  const defaultOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: 'Chart Component',
+      },
+    },
+    ...options,
+  };
+
+  return <Bar data={data} options={defaultOptions} />;
+};

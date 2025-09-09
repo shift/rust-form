@@ -1,0 +1,23 @@
+[package]
+name = "component-library-generator"
+version = "1.0.0"
+edition = "2021"
+description = "Rapid component library generator for rust-form"
+authors = ["rust-form team"]
+
+[[bin]]
+name = "component_library_cli"
+path = "component_library_cli.rs"
+
+[dependencies]
+clap = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+tera = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,0 +1,4 @@
+# Example 2 for tax-calculator
+project_name: example_2
+components:
+  tax-calculator: "path:../"

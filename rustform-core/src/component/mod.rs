@@ -1,24 +1,24 @@
-pub mod manifest;
-pub mod uri;
 pub mod cache;
-pub mod resolver;
 pub mod fetcher;
 pub mod integrity;
 pub mod lockfile;
+pub mod manifest;
+pub mod resolver;
+pub mod uri;
 
 #[cfg(test)]
 mod tests;
 
-pub use manifest::*;
-pub use uri::*;
 pub use cache::*;
-pub use resolver::*;
 pub use fetcher::*;
 pub use integrity::*;
 pub use lockfile::*;
+pub use manifest::*;
+pub use resolver::*;
+pub use uri::*;
 
 use crate::error::Result;
-use tracing::{warn, info};
+use tracing::{info, warn};
 
 #[derive(Debug, Clone)]
 pub struct ComponentSystem {
@@ -40,7 +40,7 @@ impl ComponentSystem {
             rust_form_version: env!("CARGO_PKG_VERSION").to_string(),
         })
     }
-    
+
     pub fn with_version(version: String) -> Result<Self> {
         Ok(Self {
             cache: ComponentCache::new()?,
@@ -53,10 +53,10 @@ impl ComponentSystem {
 
     pub async fn install_component(&mut self, uri: &ComponentUri) -> Result<Component> {
         let manifest = self.fetcher.fetch_manifest(uri).await?;
-        
+
         // Check API compatibility
         self.check_compatibility(&manifest)?;
-        
+
         let _resolved = self.resolver.resolve_dependencies(&manifest)?;
         let component = self.fetcher.fetch_component(uri).await?;
         self.integrity.verify(&component)?;
@@ -70,52 +70,68 @@ impl ComponentSystem {
 
     pub async fn fetch_manifest(&self, uri: &ComponentUri) -> Result<ComponentManifest> {
         let manifest = self.fetcher.fetch_manifest(uri).await?;
-        
+
         // Check API compatibility when fetching manifest
         self.check_compatibility(&manifest)?;
-        
+
         Ok(manifest)
     }
 
     pub async fn check_availability(&self, uri: &ComponentUri) -> Result<bool> {
         self.fetcher.check_availability(uri).await
     }
-    
+
     /// Check if a component is compatible with the current rust-form version
     pub fn check_compatibility(&self, manifest: &ComponentManifest) -> Result<()> {
         let status = manifest.compatibility_status(&self.rust_form_version)?;
-        
+
         match status {
             crate::component::CompatibilityStatus::Compatible { .. } => {
-                info!("Component '{}' is compatible: {}", manifest.name, status.message());
+                info!(
+                    "Component '{}' is compatible: {}",
+                    manifest.name,
+                    status.message()
+                );
                 Ok(())
             }
             crate::component::CompatibilityStatus::CompatibleExperimental { .. } => {
-                warn!("Component '{}' uses experimental APIs: {}", manifest.name, status.message());
+                warn!(
+                    "Component '{}' uses experimental APIs: {}",
+                    manifest.name,
+                    status.message()
+                );
                 Ok(())
             }
             crate::component::CompatibilityStatus::TooOld { .. } => {
                 Err(crate::error::Error::ComponentError(format!(
                     "Component '{}' is incompatible: {}",
-                    manifest.name, status.message()
+                    manifest.name,
+                    status.message()
                 )))
             }
             crate::component::CompatibilityStatus::TooNew { .. } => {
-                warn!("Component '{}' may not be fully compatible: {}", manifest.name, status.message());
+                warn!(
+                    "Component '{}' may not be fully compatible: {}",
+                    manifest.name,
+                    status.message()
+                );
                 Ok(())
             }
         }
     }
-    
+
     /// Get the current rust-form version this system is using
     pub fn rust_form_version(&self) -> &str {
         &self.rust_form_version
     }
-    
+
     /// Get a list of components with their compatibility status
-    pub async fn list_compatible_components(&self, uris: &[ComponentUri]) -> Result<Vec<ComponentCompatibilityInfo>> {
+    pub async fn list_compatible_components(
+        &self,
+        uris: &[ComponentUri],
+    ) -> Result<Vec<ComponentCompatibilityInfo>> {
         let mut results = Vec::new();
-        
+
         for uri in uris {
             match self.fetcher.fetch_manifest(uri).await {
                 Ok(manifest) => {
@@ -140,7 +156,7 @@ impl ComponentSystem {
                 }
             }
         }
-        
+
         Ok(results)
     }
 }

@@ -1,0 +1,82 @@
+# Docker ignore file for rust-form
+# Git files
+.git/
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+target/
+result/
+result-*
+
+# Nix build artifacts
+.direnv/
+.envrc
+
+# Coverage reports
+coverage/
+*.profraw
+
+# Test artifacts
+test-output*/
+generated_components/
+*.db
+*.db-shm
+*.db-wal
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Documentation build
+book/
+
+# IDE and editor files
+*.orig
+.vscode/
+.idea/
+
+# Local environment
+.env
+.env.local
+
+# Cache directories
+.cache/
+node_modules/
+
+# Frontend build artifacts (if any)
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Archives
+*.tar
+*.tar.*
+*.tgz
+*.zip
+
+# System files
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*

@@ -1,0 +1,15 @@
+[package]
+name = "cryptocurrency-wallet"
+version = "1.0.0"
+edition = "2021"
+
+[workspace]
+
+[lib]
+name = "cryptocurrency_wallet"
+path = "src/lib_test.rs"
+
+[dependencies]
+stripe = "0.28"
+hmac = "0.12"
+sha2 = "0.10"

@@ -1,0 +1,14 @@
+[package]
+name = "order-management"
+version = "1.0.0"
+edition = "2021"
+
+[workspace]
+
+[lib]
+name = "order_management"
+path = "src/lib_test.rs"
+
+[dependencies]
+uuid = { version = "1.6", features = ["v4"] }
+rust_decimal = "1.33"

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 
 /// Default schema version for new configurations
 fn default_schema_version() -> String {
@@ -319,21 +319,11 @@ pub enum FilterType {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(untagged)]
 pub enum MiddlewareConfig {
-    Logger { 
-        logger: bool 
-    },
-    Cors { 
-        cors: CorsConfig 
-    },
-    RateLimit { 
-        rate_limit: RateLimitConfig 
-    },
-    Compression { 
-        compression: CompressionConfig 
-    },
-    Security { 
-        security: SecurityConfig 
-    },
+    Logger { logger: bool },
+    Cors { cors: CorsConfig },
+    RateLimit { rate_limit: RateLimitConfig },
+    Compression { compression: CompressionConfig },
+    Security { security: SecurityConfig },
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -556,7 +546,7 @@ pub struct RegistryAuthConfig {
 
 /// Registry caching configuration
 #[cfg(feature = "registry")]
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct RegistryCacheConfig {
     /// Enable component caching
     #[serde(default = "default_true")]

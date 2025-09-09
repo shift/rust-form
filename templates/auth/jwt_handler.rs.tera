@@ -1,0 +1,64 @@
+// JWT Handler Template for {{ component_name }}
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, TokenData, Validation};
+use serde::{Deserialize, Serialize};
+use chrono::{Duration, Utc};
+use std::env;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub sub: String, // Subject (user ID)
+    pub exp: usize,  // Expiration time
+    pub iat: usize,  // Issued at
+    pub roles: Vec<String>, // User roles
+}
+
+#[derive(Debug, Clone)]
+pub struct JwtHandler {
+    encoding_key: EncodingKey,
+    decoding_key: DecodingKey,
+    expiry_hours: i64,
+}
+
+impl JwtHandler {
+    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        let secret = env::var("{{ secret_key | default(value='JWT_SECRET') }}")
+            .expect("{{ secret_key | default(value='JWT_SECRET') }} must be set");
+        
+        let expiry_hours = env::var("JWT_EXPIRY_HOURS")
+            .unwrap_or_else(|_| "{{ expiry_hours | default(value='24') }}".to_string())
+            .parse::<i64>()
+            .unwrap_or({{ expiry_hours | default(value='24') }});
+
+        Ok(Self {
+            encoding_key: EncodingKey::from_secret(secret.as_ref()),
+            decoding_key: DecodingKey::from_secret(secret.as_ref()),
+            expiry_hours,
+        })
+    }
+
+    pub fn generate_token(&self, user_id: &str, roles: Vec<String>) -> Result<String, Box<dyn std::error::Error>> {
+        let now = Utc::now();
+        let expiry = now + Duration::hours(self.expiry_hours);
+
+        let claims = Claims {
+            sub: user_id.to_string(),
+            exp: expiry.timestamp() as usize,
+            iat: now.timestamp() as usize,
+            roles,
+        };
+
+        let token = encode(&Header::default(), &claims, &self.encoding_key)?;
+        Ok(token)
+    }
+
+    pub fn validate_token(&self, token: &str) -> Result<TokenData<Claims>, Box<dyn std::error::Error>> {
+        let validation = Validation::default();
+        let token_data = decode::<Claims>(token, &self.decoding_key, &validation)?;
+        Ok(token_data)
+    }
+
+    pub fn refresh_token(&self, old_token: &str) -> Result<String, Box<dyn std::error::Error>> {
+        let token_data = self.validate_token(old_token)?;
+        self.generate_token(&token_data.claims.sub, token_data.claims.roles)
+    }
+}

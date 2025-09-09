@@ -1,0 +1,49 @@
+project_name: "ui-kit-test-app"
+version: "0.1.0"
+
+database:
+  type: sqlite
+  url_env: DATABASE_URL
+
+server:
+  host: "127.0.0.1"
+  port: 3000
+
+components:
+  - name: "ui-kit"
+    path: "../"
+
+api:
+  models:
+    TestModel:
+      table_name: test_models
+      fields:
+        id:
+          type: integer
+          primary_key: true
+          auto_increment: true
+        name:
+          type: string
+          max_length: 255
+          required: true
+        created_at:
+          type: datetime
+          auto_now_add: true
+
+  endpoints:
+    - path: /test
+      model: TestModel
+      crud:
+        create: true
+        read_all: true
+        read_one: true
+        update: true
+        delete: true
+
+middleware:
+  - logger: true
+  - cors:
+      allow_origin: "*"
+      allow_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      allow_headers: ["Content-Type", "Authorization"]
+      allow_credentials: false

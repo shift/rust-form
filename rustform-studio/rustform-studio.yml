@@ -242,12 +242,15 @@ api:
           type: contains
         - field: author
           type: exact
-      custom_handlers:
-        file: "src/component_handlers.rs"
-        handlers:
-          - "refresh_component"
-          - "bulk_install_components"
-          - "check_component_updates"
+       custom_handlers:
+         file: "src/component_handlers.rs"
+         handlers:
+           - "refresh_component"
+           - "bulk_install_components"
+           - "check_component_updates"
+           - "generate_component"
+           - "get_component_categories"
+           - "generate_component_library"
 
     - path: /projects
       model: Project

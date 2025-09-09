@@ -1,0 +1,4 @@
+# Example 3 for wallet-system
+project_name: example_3
+components:
+  wallet-system: "path:../"

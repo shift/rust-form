@@ -1,0 +1,23 @@
+name: "inventory-tracker"
+version: "1.0.0"
+description: "Real-time inventory tracking system"
+author: "Rust-Form Team"
+license: "MIT"
+keywords: ["generated", "component"]
+
+api_compatibility:
+  api_version: "0.1.0"
+  min_version: "0.1.0"
+  max_version: "0.2.0"
+  required_features:
+    - "core"
+  experimental: false
+
+dependencies: {}
+
+provides:
+  templates: []
+  assets: []
+  hooks: []
+
+files: []

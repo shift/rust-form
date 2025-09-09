@@ -1,0 +1,4 @@
+# Example 2 for admin-panel
+project_name: example_2
+components:
+  admin-panel: "path:../"

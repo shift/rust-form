@@ -1,0 +1,57 @@
+import React, { useState } from 'react';
+
+interface ContentEditorProps {
+  initialContent?: string;
+  onChange: (content: string) => void;
+  onSave: () => void;
+  placeholder?: string;
+}
+
+export const ContentEditor: React.FC<ContentEditorProps> = ({
+  initialContent = '',
+  onChange,
+  onSave,
+  placeholder = 'Start writing...',
+}) => {
+  const [content, setContent] = useState(initialContent);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleContentChange = (value: string) => {
+    setContent(value);
+    onChange(value);
+  };
+
+  const handleSave = () => {
+    onSave();
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="content-editor">
+      <div className="editor-toolbar">
+        <button onClick={() => setIsEditing(!isEditing)}>
+          {isEditing ? 'Preview' : 'Edit'}
+        </button>
+        {isEditing && (
+          <button onClick={handleSave} className="save-btn">
+            Save
+          </button>
+        )}
+      </div>
+      
+      {isEditing ? (
+        <textarea
+          value={content}
+          onChange={(e) => handleContentChange(e.target.value)}
+          placeholder={placeholder}
+          className="editor-textarea"
+        />
+      ) : (
+        <div
+          className="editor-preview"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
+      )}
+    </div>
+  );
+};

@@ -1,0 +1,4 @@
+# Example 1 for remember-me
+project_name: example_1
+components:
+  remember-me: "path:../"

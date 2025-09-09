@@ -1,0 +1,4 @@
+# Example 2 for loyalty-points
+project_name: example_2
+components:
+  loyalty-points: "path:../"

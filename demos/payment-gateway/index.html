@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Gateway Demo - RustForm Components</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .header { 
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white; 
+            padding: 1rem 0; 
+        }
+        .header-content { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 0 2rem; 
+            text-align: center; 
+        }
+        .main-content { 
+            max-width: 1200px; 
+            margin: 2rem auto; 
+            padding: 0 2rem; 
+        }
+        .demo-section { 
+            background: rgba(255, 255, 255, 0.95); 
+            border-radius: 12px; 
+            padding: 2rem; 
+            margin-bottom: 2rem; 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); 
+        }
+        .payment-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 1.5rem; 
+            margin-top: 1.5rem; 
+        }
+        .payment-method { 
+            background: white; 
+            border: 1px solid #e1e5e9; 
+            border-radius: 8px; 
+            padding: 1.5rem; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); 
+            transition: transform 0.2s; 
+        }
+        .payment-method:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); 
+        }
+        .demo-button { 
+            background: linear-gradient(135deg, #667eea, #764ba2); 
+            color: white; 
+            border: none; 
+            padding: 0.75rem 1.5rem; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            margin: 0.5rem; 
+        }
+        .demo-button:hover { 
+            transform: translateY(-1px); 
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); 
+        }
+        .demo-button.success { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .demo-button.warning { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .demo-button.danger { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 1rem; 
+            margin: 1rem 0; 
+        }
+        .stat-card { 
+            background: linear-gradient(135deg, #3498db, #2980b9); 
+            color: white; 
+            padding: 1.5rem; 
+            border-radius: 8px; 
+            text-align: center; 
+        }
+        .stat-number { 
+            font-size: 2rem; 
+            font-weight: bold; 
+            margin-bottom: 0.5rem; 
+        }
+        .notification { 
+            background: #d4edda; 
+            color: #155724; 
+            padding: 1rem; 
+            border-radius: 6px; 
+            margin: 1rem 0; 
+            border: 1px solid #c3e6cb; 
+        }
+        .notification.error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border-color: #f5c6cb; 
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>💳 RustForm Payment Gateway Demo</h1>
+            <p>Comprehensive payment processing showcase with 20+ components</p>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="demo-section">
+            <h2>💰 Payment Processing Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">$2.3M</div>
+                    <div>Total Processed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">15,847</div>
+                    <div>Transactions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">99.2%</div>
+                    <div>Success Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0.8%</div>
+                    <div>Fraud Rate</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>💳 Payment Methods & Processing</h2>
+            <p>Demonstrates: stripe-integration, paypal-integration, payment-gateway, cryptocurrency-wallet</p>
+            
+            <div class="payment-grid">
+                <div class="payment-method">
+                    <h3>💳 Stripe Integration</h3>
+                    <p>Credit card processing, subscriptions, and marketplace payments</p>
+                    <button class="demo-button" onclick="demoStripe()">Process Stripe Payment</button>
+                    <button class="demo-button" onclick="demoStripeSubscription()">Demo Subscription</button>
+                </div>
+
+                <div class="payment-method">
+                    <h3>🅿️ PayPal Integration</h3>
+                    <p>PayPal payments, express checkout, and PayPal Credit</p>
+                    <button class="demo-button" onclick="demoPayPal()">Process PayPal Payment</button>
+                    <button class="demo-button" onclick="demoPayPalExpress()">Express Checkout</button>
+                </div>
+
+                <div class="payment-method">
+                    <h3>₿ Cryptocurrency Wallet</h3>
+                    <p>Bitcoin, Ethereum, and other cryptocurrency payments</p>
+                    <button class="demo-button" onclick="demoCrypto('bitcoin')">Bitcoin Payment</button>
+                    <button class="demo-button" onclick="demoCrypto('ethereum')">Ethereum Payment</button>
+                </div>
+
+                <div class="payment-method">
+                    <h3>🏦 ACH Payments</h3>
+                    <p>Bank transfers and direct debit processing</p>
+                    <button class="demo-button" onclick="demoACH()">Process ACH Transfer</button>
+                    <button class="demo-button" onclick="demoDirectDebit()">Direct Debit</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🛡️ Fraud Detection & Security</h2>
+            <p>Demonstrates: fraud-detection, chargeback-handler, payment-analytics</p>
+            
+            <div class="payment-grid">
+                <div class="payment-method">
+                    <h3>🔍 Real-time Fraud Detection</h3>
+                    <p>Machine learning powered fraud prevention</p>
+                    <button class="demo-button warning" onclick="demoFraudDetection()">Analyze Transaction</button>
+                    <button class="demo-button" onclick="demoRiskScore()">Check Risk Score</button>
+                </div>
+
+                <div class="payment-method">
+                    <h3>⚖️ Chargeback Management</h3>
+                    <p>Handle disputes and chargeback processes</p>
+                    <button class="demo-button danger" onclick="demoChargeback()">Process Chargeback</button>
+                    <button class="demo-button" onclick="demoDispute()">Handle Dispute</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>📊 Financial Management</h2>
+            <p>Demonstrates: invoice-system, tax-calculator, refund-manager, currency-converter</p>
+            
+            <div class="payment-grid">
+                <div class="payment-method">
+                    <h3>📄 Invoice System</h3>
+                    <p>Generate, send, and track invoices</p>
+                    <button class="demo-button" onclick="demoInvoice()">Generate Invoice</button>
+                    <button class="demo-button" onclick="demoInvoiceTrack()">Track Payment</button>
+                </div>
+
+                <div class="payment-method">
+                    <h3>🧮 Tax Calculator</h3>
+                    <p>Automatic tax calculation for global sales</p>
+                    <button class="demo-button" onclick="demoTaxCalc()">Calculate Tax</button>
+                    <button class="demo-button" onclick="demoTaxReport()">Generate Report</button>
+                </div>
+
+                <div class="payment-method">
+                    <h3>💸 Refund Manager</h3>
+                    <p>Process refunds and partial returns</p>
+                    <button class="demo-button success" onclick="demoRefund()">Process Refund</button>
+                    <button class="demo-button" onclick="demoPartialRefund()">Partial Refund</button>
+                </div>
+
+                <div class="payment-method">
+                    <h3>💱 Currency Converter</h3>
+                    <p>Multi-currency support and real-time rates</p>
+                    <button class="demo-button" onclick="demoCurrencyConvert()">Convert Currency</button>
+                    <button class="demo-button" onclick="demoExchangeRates()">View Rates</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.querySelector('.main-content').insertBefore(notification, document.querySelector('.main-content').firstChild);
+            setTimeout(() => notification.remove(), 4000);
+        }
+
+        function demoStripe() {
+            showNotification('💳 Stripe payment of $99.99 processed successfully! Transaction ID: txn_1ABC123');
+        }
+
+        function demoStripeSubscription() {
+            showNotification('📅 Monthly subscription of $29.99 created successfully!');
+        }
+
+        function demoPayPal() {
+            showNotification('🅿️ PayPal payment of $149.99 completed successfully!');
+        }
+
+        function demoPayPalExpress() {
+            showNotification('⚡ PayPal Express Checkout completed in 3 clicks!');
+        }
+
+        function demoCrypto(currency) {
+            showNotification(`₿ ${currency.charAt(0).toUpperCase() + currency.slice(1)} payment verified on blockchain!`);
+        }
+
+        function demoACH() {
+            showNotification('🏦 ACH transfer of $500.00 initiated. Will process in 1-3 business days.');
+        }
+
+        function demoDirectDebit() {
+            showNotification('💰 Direct debit setup successful. Next payment on 15th.');
+        }
+
+        function demoFraudDetection() {
+            showNotification('🔍 Transaction analyzed: Risk score 2.1/10 - APPROVED', 'success');
+        }
+
+        function demoRiskScore() {
+            showNotification('📊 Risk factors: New device (-1), Unusual amount (-0.5), Total score: 1.5/10');
+        }
+
+        function demoChargeback() {
+            showNotification('⚖️ Chargeback for $89.99 processed. Evidence package sent.', 'error');
+        }
+
+        function demoDispute() {
+            showNotification('🛡️ Dispute resolved in merchant favor. Funds reinstated.');
+        }
+
+        function demoInvoice() {
+            showNotification('📄 Invoice #INV-2024-001 generated and sent to customer.');
+        }
+
+        function demoInvoiceTrack() {
+            showNotification('👀 Invoice status: Sent (3 days ago), Viewed (1 day ago), Payment pending.');
+        }
+
+        function demoTaxCalc() {
+            showNotification('🧮 Tax calculated: $89.99 + $7.65 (8.5%) = $97.64 total');
+        }
+
+        function demoTaxReport() {
+            showNotification('📈 Tax report generated: $1,234.56 collected this month.');
+        }
+
+        function demoRefund() {
+            showNotification('💸 Full refund of $99.99 processed. Funds will appear in 3-5 days.');
+        }
+
+        function demoPartialRefund() {
+            showNotification('💰 Partial refund of $25.00 processed.');
+        }
+
+        function demoCurrencyConvert() {
+            showNotification('💱 $100.00 USD = €85.23 EUR (Rate: 0.8523)');
+        }
+
+        function demoExchangeRates() {
+            showNotification('📊 Current rates: EUR 0.85, GBP 0.76, JPY 110.5, CAD 1.25');
+        }
+    </script>
+</body>
+</html>

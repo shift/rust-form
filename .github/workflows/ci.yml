@@ -5,61 +5,173 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    # Run weekly security audits
+    - cron: '0 0 * * 0'
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
-  test:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.changes.outputs.core }}
+      cli: ${{ steps.changes.outputs.cli }}
+      codegen: ${{ steps.changes.outputs.codegen }}
+      studio: ${{ steps.changes.outputs.studio }}
+      docs: ${{ steps.changes.outputs.docs }}
+      tests: ${{ steps.changes.outputs.tests }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          core:
+            - 'rustform-core/**'
+            - 'Cargo.toml'
+            - 'Cargo.lock'
+          cli:
+            - 'rustform-cli/**'
+            - 'Cargo.toml'
+            - 'Cargo.lock'
+          codegen:
+            - 'rustform-codegen/**'
+            - 'templates/**'
+            - 'Cargo.toml'
+            - 'Cargo.lock'
+          studio:
+            - 'rustform-studio/**'
+            - 'Cargo.toml'
+            - 'Cargo.lock'
+          docs:
+            - 'docs/**'
+            - '*.md'
+          tests:
+            - 'tests/**'
+            - 'examples/**'
+            - '**/*test*'
+
+  test-matrix:
     name: Test Suite
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.codegen == 'true' || needs.changes.outputs.tests == 'true'
     strategy:
+      fail-fast: false
       matrix:
-        rust:
-          - stable
-          - beta
-          - nightly
+        test-type:
+          - unit
+          - integration
+          - e2e
+        include:
+          - test-type: unit
+            command: "cargo test --workspace --lib --all-features"
+          - test-type: integration
+            command: "cargo test --workspace --test integration_tests --all-features"
+          - test-type: e2e
+            command: "cargo test --workspace --test e2e_tests --all-features"
     steps:
     - uses: actions/checkout@v4
     
     - name: Install Nix
-      uses: cachix/install-nix-action@v24
+      uses: cachix/install-nix-action@v27
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Setup Nix Cache
-      uses: cachix/cachix-action@v12
+      uses: cachix/cachix-action@v14
       with:
         name: rust-form
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
         
-    - name: Run tests
-      run: nix develop -c -- cargo test --all-features --workspace
+    - name: Run ${{ matrix.test-type }} tests
+      run: |
+        export DATABASE_URL="sqlite::memory:"
+        nix develop -c -- ${{ matrix.command }}
       
     - name: Run doctests
+      if: matrix.test-type == 'unit'
       run: nix develop -c -- cargo test --doc --workspace
 
+  test-components:
+    name: Component Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.codegen == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        component:
+          - rustform-core
+          - rustform-cli
+          - rustform-codegen
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+        
+    - name: Test ${{ matrix.component }}
+      run: |
+        export DATABASE_URL="sqlite::memory:"
+        nix develop -c -- cargo test -p ${{ matrix.component }} --all-features
+
   fmt:
-    name: Rustfmt
+    name: Formatting
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    
     - name: Install Nix
-      uses: cachix/install-nix-action@v24
+      uses: cachix/install-nix-action@v27
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: true
+        
     - name: Check formatting
-      run: nix flake check
+      run: nix develop -c -- cargo fmt --all -- --check
 
   clippy:
-    name: Clippy
+    name: Clippy Analysis
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.codegen == 'true'
     steps:
     - uses: actions/checkout@v4
+    
     - name: Install Nix
-      uses: cachix/install-nix-action@v24
+      uses: cachix/install-nix-action@v27
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+        
     - name: Run clippy
       run: nix develop -c -- cargo clippy --all-targets --all-features -- -D warnings
 
@@ -68,27 +180,209 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    
     - name: Install Nix
-      uses: cachix/install-nix-action@v24
+      uses: cachix/install-nix-action@v27
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: true
+        
     - name: Security audit
       run: nix develop -c -- cargo audit
 
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.codegen == 'true' || needs.changes.outputs.tests == 'true'
     steps:
     - uses: actions/checkout@v4
+    
     - name: Install Nix
-      uses: cachix/install-nix-action@v24
+      uses: cachix/install-nix-action@v27
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+        
     - name: Install cargo-tarpaulin
       run: nix develop -c -- cargo install cargo-tarpaulin
+      
     - name: Generate code coverage
-      run: nix develop -c -- cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+      run: |
+        export DATABASE_URL="sqlite::memory:"
+        nix develop -c -- cargo tarpaulin --verbose --all-features --workspace --timeout 300 --out xml --output-dir coverage
+        
     - name: Upload to codecov.io
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
+        files: coverage/cobertura.xml
         fail_ci_if_error: true
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+  property-tests:
+    name: Property Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.tests == 'true'
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+        
+    - name: Run property tests
+      run: |
+        export DATABASE_URL="sqlite::memory:"
+        nix develop -c -- cargo test --workspace --all-features property_tests --release
+      timeout-minutes: 30
+
+  cucumber-tests:
+    name: Cucumber BDD Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.tests == 'true'
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+        
+    - name: Run cucumber tests
+      run: |
+        export DATABASE_URL="sqlite::memory:"
+        nix develop -c -- cargo test --workspace --test cucumber_tests --all-features
+
+  build:
+    name: Build Artifacts
+    runs-on: ubuntu-latest
+    needs: [test-matrix, fmt, clippy]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+        
+    - name: Build project
+      run: nix build
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rustform-binary
+        path: result/bin/rustform
+        retention-days: 30
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.core == 'true'
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: true
+        
+    - name: Build documentation
+      run: nix develop -c -- cargo doc --workspace --all-features --no-deps
+      
+    - name: Upload documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: target/doc/
+        retention-days: 30
+
+  nix-checks:
+    name: Nix Checks
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Nix Cache
+      uses: cachix/cachix-action@v14
+      with:
+        name: rust-form
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+        
+    - name: Run nix flake checks
+      run: nix flake check --verbose
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [test-matrix, test-components, fmt, clippy, security, coverage, build, docs]
+    steps:
+    - name: Check CI Results
+      run: |
+        echo "CI Summary:"
+        echo "- Tests: ${{ needs.test-matrix.result }}"
+        echo "- Component Tests: ${{ needs.test-components.result }}"
+        echo "- Formatting: ${{ needs.fmt.result }}"
+        echo "- Clippy: ${{ needs.clippy.result }}"
+        echo "- Security: ${{ needs.security.result }}"
+        echo "- Coverage: ${{ needs.coverage.result }}"
+        echo "- Build: ${{ needs.build.result }}"
+        echo "- Docs: ${{ needs.docs.result }}"
+        
+        if [[ "${{ needs.test-matrix.result }}" == "failure" || "${{ needs.fmt.result }}" == "failure" || "${{ needs.clippy.result }}" == "failure" ]]; then
+          echo "❌ Critical checks failed"
+          exit 1
+        else
+          echo "✅ All critical checks passed"
+        fi

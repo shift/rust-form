@@ -1,0 +1,4 @@
+# Example 2 for content-scheduler
+project_name: example_2
+components:
+  content-scheduler: "path:../"

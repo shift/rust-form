@@ -1,0 +1,4 @@
+# Example 4 for analytics-dashboard
+project_name: example_4
+components:
+  analytics-dashboard: "path:../"

@@ -1,7 +1,7 @@
+pub mod component;
 pub mod generate;
 pub mod init;
-pub mod component;
 
+pub use component::ComponentCommand;
 pub use generate::GenerateCommand;
 pub use init::InitCommand;
-pub use component::ComponentCommand;

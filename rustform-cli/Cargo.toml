@@ -39,6 +39,11 @@ tokio.workspace = true
 rstest = { workspace = true }
 tempfile = { workspace = true }
 similar-asserts = { workspace = true }
+proptest = { workspace = true }
+
+# CLI testing
+assert_cmd = { workspace = true }
+predicates = { workspace = true }
 
 # Test utilities
-tokio-test = "0.4"
+tokio-test = { workspace = true }

@@ -1,0 +1,45 @@
+// Dashboard metrics API template
+use axum::{extract::Query, response::Json};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Deserialize)]
+pub struct MetricsQuery {
+    #[serde(default)]
+    pub start_date: Option<String>,
+    #[serde(default)]
+    pub end_date: Option<String>,
+    #[serde(default)]
+    pub granularity: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct MetricsResponse {
+    pub data: HashMap<String, Vec<MetricPoint>>,
+    pub meta: MetricsMeta,
+}
+
+#[derive(Serialize)]
+pub struct MetricPoint {
+    pub timestamp: i64,
+    pub value: f64,
+}
+
+#[derive(Serialize)]
+pub struct MetricsMeta {
+    pub total_points: usize,
+    pub start_date: String,
+    pub end_date: String,
+}
+
+pub async fn get_metrics(Query(params): Query<MetricsQuery>) -> Json<MetricsResponse> {
+    // Implementation for fetching metrics
+    let data = HashMap::new(); // Placeholder
+    let meta = MetricsMeta {
+        total_points: 0,
+        start_date: params.start_date.unwrap_or_default(),
+        end_date: params.end_date.unwrap_or_default(),
+    };
+    
+    Json(MetricsResponse { data, meta })
+}

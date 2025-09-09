@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 // Compliance framework core types
@@ -140,16 +140,16 @@ pub struct DataSubjectRequest {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum DataSubjectRequestType {
-    DataAccess,                // GDPR Article 15
-    DataRectification,        // GDPR Article 16
-    DataErasure,              // GDPR Article 17 (Right to be forgotten)
-    DataPortability,          // GDPR Article 20
-    ProcessingRestriction,    // GDPR Article 18
-    ObjectToProcessing,       // GDPR Article 21
-    ConsentWithdrawal,        // GDPR Article 7(3)
-    CcpaDataAccess,           // CCPA Consumer Rights
-    CcpaDataDeletion,         // CCPA Consumer Rights
-    CcpaOptOutOfSale,         // CCPA Do Not Sell
+    DataAccess,            // GDPR Article 15
+    DataRectification,     // GDPR Article 16
+    DataErasure,           // GDPR Article 17 (Right to be forgotten)
+    DataPortability,       // GDPR Article 20
+    ProcessingRestriction, // GDPR Article 18
+    ObjectToProcessing,    // GDPR Article 21
+    ConsentWithdrawal,     // GDPR Article 7(3)
+    CcpaDataAccess,        // CCPA Consumer Rights
+    CcpaDataDeletion,      // CCPA Consumer Rights
+    CcpaOptOutOfSale,      // CCPA Do Not Sell
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -259,25 +259,25 @@ pub enum SensitivityLevel {
 pub enum ComplianceError {
     #[error("Invalid request type: {0}")]
     InvalidRequestType(String),
-    
+
     #[error("Verification failed: {0}")]
     VerificationFailed(String),
-    
+
     #[error("Data deletion failed: {0}")]
     DataDeletionFailed(String),
-    
+
     #[error("Consent required for operation: {0}")]
     ConsentRequired(String),
-    
+
     #[error("Retention period violation: {0}")]
     RetentionViolation(String),
-    
+
     #[error("Audit log error: {0}")]
     AuditError(String),
-    
+
     #[error("Database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
-    
+
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
 }

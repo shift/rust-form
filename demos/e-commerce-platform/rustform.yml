@@ -1,0 +1,446 @@
+name: "E-Commerce Platform Demo"
+version: "1.0.0"
+description: "Full-featured e-commerce platform showcasing 20+ components"
+
+components:
+  # Auth Components
+  - name: "jwt-authentication"
+    path: "../../generated_components_100/components/auth/jwt-authentication"
+  - name: "oauth2-integration"
+    path: "../../generated_components_100/components/auth/oauth2-integration"
+  - name: "session-management"
+    path: "../../generated_components_100/components/auth/session-management"
+  - name: "rbac-engine"
+    path: "../../generated_components_100/components/auth/rbac-engine"
+  
+  # E-commerce Components
+  - name: "product-catalog"
+    path: "../../generated_components_100/components/ecommerce/product-catalog"
+  - name: "shopping-cart"
+    path: "../../generated_components_100/components/ecommerce/shopping-cart"
+  - name: "order-management"
+    path: "../../generated_components_100/components/ecommerce/order-management"
+  - name: "inventory-tracker"
+    path: "../../generated_components_100/components/ecommerce/inventory-tracker"
+  - name: "recommendation-engine"
+    path: "../../generated_components_100/components/ecommerce/recommendation-engine"
+  - name: "review-system"
+    path: "../../generated_components_100/components/ecommerce/review-system"
+  - name: "coupon-manager"
+    path: "../../generated_components_100/components/ecommerce/coupon-manager"
+  - name: "wishlist-manager"
+    path: "../../generated_components_100/components/ecommerce/wishlist-manager"
+  - name: "shipping-calculator"
+    path: "../../generated_components_100/components/ecommerce/shipping-calculator"
+  - name: "abandoned-cart"
+    path: "../../generated_components_100/components/ecommerce/abandoned-cart"
+  - name: "affiliate-tracking"
+    path: "../../generated_components_100/components/ecommerce/affiliate-tracking"
+  
+  # Payment Components
+  - name: "stripe-integration"
+    path: "../../generated_components_100/components/payments/stripe-integration"
+  - name: "paypal-integration"
+    path: "../../generated_components_100/components/payments/paypal-integration"
+  - name: "payment-gateway"
+    path: "../../generated_components_100/components/payments/payment-gateway"
+  - name: "refund-manager"
+    path: "../../generated_components_100/components/payments/refund-manager"
+  - name: "tax-calculator"
+    path: "../../generated_components_100/components/payments/tax-calculator"
+  - name: "invoice-system"
+    path: "../../generated_components_100/components/payments/invoice-system"
+  - name: "fraud-detection"
+    path: "../../generated_components_100/components/payments/fraud-detection"
+  
+  # Dashboard Components
+  - name: "analytics-dashboard"
+    path: "../../generated_components_100/components/dashboards/analytics-dashboard"
+  - name: "admin-panel"
+    path: "../../generated_components_100/components/dashboards/admin-panel"
+
+database:
+  type: "postgresql"
+  url: "postgres://user:password@localhost/ecommerce_demo"
+
+models:
+  User:
+    fields:
+      id:
+        type: "uuid"
+        primary: true
+        default: "uuid_generate_v4()"
+      email:
+        type: "string"
+        unique: true
+        max_length: 255
+        required: true
+      password_hash:
+        type: "string"
+        max_length: 255
+        required: true
+      first_name:
+        type: "string"
+        max_length: 100
+      last_name:
+        type: "string"
+        max_length: 100
+      role:
+        type: "enum"
+        values: ["customer", "admin", "vendor"]
+        default: "customer"
+      created_at:
+        type: "datetime"
+        auto_now_add: true
+      updated_at:
+        type: "datetime"
+        auto_now: true
+
+  Product:
+    fields:
+      id:
+        type: "uuid"
+        primary: true
+        default: "uuid_generate_v4()"
+      name:
+        type: "string"
+        max_length: 255
+        required: true
+      description:
+        type: "text"
+      price:
+        type: "decimal"
+        precision: 10
+        scale: 2
+        required: true
+      category_id:
+        type: "uuid"
+        foreign_key: "Category.id"
+      vendor_id:
+        type: "uuid"
+        foreign_key: "User.id"
+      stock_quantity:
+        type: "integer"
+        default: 0
+      sku:
+        type: "string"
+        unique: true
+        max_length: 100
+      images:
+        type: "json"
+        default: "[]"
+      attributes:
+        type: "json"
+        default: "{}"
+      is_active:
+        type: "boolean"
+        default: true
+      featured:
+        type: "boolean"
+        default: false
+      created_at:
+        type: "datetime"
+        auto_now_add: true
+      updated_at:
+        type: "datetime"
+        auto_now: true
+
+  Category:
+    fields:
+      id:
+        type: "uuid"
+        primary: true
+        default: "uuid_generate_v4()"
+      name:
+        type: "string"
+        max_length: 100
+        required: true
+      slug:
+        type: "string"
+        unique: true
+        max_length: 100
+      description:
+        type: "text"
+      parent_id:
+        type: "uuid"
+        foreign_key: "Category.id"
+        nullable: true
+      image_url:
+        type: "string"
+        max_length: 500
+      is_active:
+        type: "boolean"
+        default: true
+      sort_order:
+        type: "integer"
+        default: 0
+
+  Order:
+    fields:
+      id:
+        type: "uuid"
+        primary: true
+        default: "uuid_generate_v4()"
+      user_id:
+        type: "uuid"
+        foreign_key: "User.id"
+        required: true
+      status:
+        type: "enum"
+        values: ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"]
+        default: "pending"
+      total_amount:
+        type: "decimal"
+        precision: 10
+        scale: 2
+        required: true
+      subtotal:
+        type: "decimal"
+        precision: 10
+        scale: 2
+      tax_amount:
+        type: "decimal"
+        precision: 10
+        scale: 2
+      shipping_amount:
+        type: "decimal"
+        precision: 10
+        scale: 2
+      discount_amount:
+        type: "decimal"
+        precision: 10
+        scale: 2
+        default: 0
+      shipping_address:
+        type: "json"
+      billing_address:
+        type: "json"
+      payment_status:
+        type: "enum"
+        values: ["pending", "paid", "failed", "refunded"]
+        default: "pending"
+      payment_method:
+        type: "string"
+        max_length: 50
+      tracking_number:
+        type: "string"
+        max_length: 100
+      notes:
+        type: "text"
+      created_at:
+        type: "datetime"
+        auto_now_add: true
+      updated_at:
+        type: "datetime"
+        auto_now: true
+
+  OrderItem:
+    fields:
+      id:
+        type: "uuid"
+        primary: true
+        default: "uuid_generate_v4()"
+      order_id:
+        type: "uuid"
+        foreign_key: "Order.id"
+        required: true
+      product_id:
+        type: "uuid"
+        foreign_key: "Product.id"
+        required: true
+      quantity:
+        type: "integer"
+        required: true
+        minimum: 1
+      unit_price:
+        type: "decimal"
+        precision: 10
+        scale: 2
+        required: true
+      total_price:
+        type: "decimal"
+        precision: 10
+        scale: 2
+        required: true
+      product_snapshot:
+        type: "json"
+
+  Cart:
+    fields:
+      id:
+        type: "uuid"
+        primary: true
+        default: "uuid_generate_v4()"
+      user_id:
+        type: "uuid"
+        foreign_key: "User.id"
+      session_id:
+        type: "string"
+        max_length: 255
+      items:
+        type: "json"
+        default: "[]"
+      total_amount:
+        type: "decimal"
+        precision: 10
+        scale: 2
+        default: 0
+      created_at:
+        type: "datetime"
+        auto_now_add: true
+      updated_at:
+        type: "datetime"
+        auto_now: true
+
+  Review:
+    fields:
+      id:
+        type: "uuid"
+        primary: true
+        default: "uuid_generate_v4()"
+      product_id:
+        type: "uuid"
+        foreign_key: "Product.id"
+        required: true
+      user_id:
+        type: "uuid"
+        foreign_key: "User.id"
+        required: true
+      rating:
+        type: "integer"
+        minimum: 1
+        maximum: 5
+        required: true
+      title:
+        type: "string"
+        max_length: 255
+      comment:
+        type: "text"
+      helpful_votes:
+        type: "integer"
+        default: 0
+      verified_purchase:
+        type: "boolean"
+        default: false
+      created_at:
+        type: "datetime"
+        auto_now_add: true
+
+routes:
+  # Product routes
+  - path: "/api/products"
+    method: "GET"
+    handler: "list_products"
+    middleware: []
+    response:
+      type: "Product[]"
+  
+  - path: "/api/products/{id}"
+    method: "GET"
+    handler: "get_product"
+    response:
+      type: "Product"
+  
+  - path: "/api/products"
+    method: "POST"
+    handler: "create_product"
+    middleware: ["auth", "admin"]
+    request:
+      type: "CreateProductRequest"
+    response:
+      type: "Product"
+  
+  # Cart routes
+  - path: "/api/cart"
+    method: "GET"
+    handler: "get_cart"
+    middleware: ["auth"]
+    response:
+      type: "Cart"
+  
+  - path: "/api/cart/add"
+    method: "POST"
+    handler: "add_to_cart"
+    middleware: ["auth"]
+    request:
+      type: "AddToCartRequest"
+    response:
+      type: "Cart"
+  
+  # Order routes
+  - path: "/api/orders"
+    method: "GET"
+    handler: "list_orders"
+    middleware: ["auth"]
+    response:
+      type: "Order[]"
+  
+  - path: "/api/orders"
+    method: "POST"
+    handler: "create_order"
+    middleware: ["auth"]
+    request:
+      type: "CreateOrderRequest"
+    response:
+      type: "Order"
+  
+  # Auth routes
+  - path: "/api/auth/login"
+    method: "POST"
+    handler: "login"
+    request:
+      type: "LoginRequest"
+    response:
+      type: "AuthResponse"
+  
+  - path: "/api/auth/register"
+    method: "POST"
+    handler: "register"
+    request:
+      type: "RegisterRequest"
+    response:
+      type: "AuthResponse"
+  
+  # Payment routes
+  - path: "/api/payments/stripe/intent"
+    method: "POST"
+    handler: "create_payment_intent"
+    middleware: ["auth"]
+    request:
+      type: "PaymentIntentRequest"
+    response:
+      type: "PaymentIntentResponse"
+
+frontend:
+  type: "react"
+  build_dir: "dist"
+  source_dir: "frontend/src"
+  routes:
+    - path: "/"
+      component: "HomePage"
+    - path: "/products"
+      component: "ProductCatalog"
+    - path: "/products/{id}"
+      component: "ProductDetail"
+    - path: "/cart"
+      component: "ShoppingCart"
+    - path: "/checkout"
+      component: "CheckoutPage"
+    - path: "/orders"
+      component: "OrderHistory"
+    - path: "/admin"
+      component: "AdminDashboard"
+      auth_required: true
+      roles: ["admin"]
+
+deployment:
+  type: "docker"
+  database:
+    type: "postgresql"
+    version: "15"
+  redis:
+    enabled: true
+  nginx:
+    enabled: true
+  ssl:
+    enabled: true

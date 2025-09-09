@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS Blog Demo - RustForm Components</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+        }
+        .header { 
+            background: #2c3e50; 
+            color: white; 
+            padding: 1rem 0; 
+        }
+        .header-content { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 0 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .nav { 
+            display: flex; 
+            gap: 1rem; 
+        }
+        .nav button { 
+            background: none; 
+            border: none; 
+            color: white; 
+            padding: 0.5rem 1rem; 
+            cursor: pointer; 
+            border-radius: 4px; 
+        }
+        .nav button:hover, .nav button.active { 
+            background: #34495e; 
+        }
+        .main-content { 
+            max-width: 1200px; 
+            margin: 2rem auto; 
+            padding: 0 2rem; 
+        }
+        .demo-section { 
+            background: white; 
+            border-radius: 8px; 
+            padding: 2rem; 
+            margin-bottom: 2rem; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .hidden { 
+            display: none; 
+        }
+        .content-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 1.5rem; 
+            margin-top: 1.5rem; 
+        }
+        .content-item { 
+            border: 1px solid #e1e5e9; 
+            border-radius: 8px; 
+            padding: 1.5rem; 
+            background: #f8f9fa; 
+        }
+        .demo-button { 
+            background: #3498db; 
+            color: white; 
+            border: none; 
+            padding: 0.5rem 1rem; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 0.25rem; 
+        }
+        .demo-button:hover { 
+            background: #2980b9; 
+        }
+        .demo-button.success { 
+            background: #27ae60; 
+        }
+        .demo-button.warning { 
+            background: #f39c12; 
+        }
+        .editor-demo { 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            min-height: 200px; 
+            padding: 1rem; 
+            margin: 1rem 0; 
+            background: white; 
+        }
+        .toolbar { 
+            background: #f1f3f4; 
+            padding: 0.5rem; 
+            border-bottom: 1px solid #ddd; 
+            display: flex; 
+            gap: 0.5rem; 
+        }
+        .toolbar button { 
+            background: none; 
+            border: 1px solid #ddd; 
+            padding: 0.25rem 0.5rem; 
+            cursor: pointer; 
+            border-radius: 2px; 
+        }
+        .article-card { 
+            border: 1px solid #e1e5e9; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            background: white; 
+            margin-bottom: 1rem; 
+        }
+        .article-header { 
+            padding: 1rem; 
+            border-bottom: 1px solid #e1e5e9; 
+        }
+        .article-content { 
+            padding: 1rem; 
+        }
+        .article-meta { 
+            color: #6c757d; 
+            font-size: 0.9rem; 
+            margin-bottom: 0.5rem; 
+        }
+        .media-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); 
+            gap: 1rem; 
+            margin: 1rem 0; 
+        }
+        .media-item { 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            padding: 1rem; 
+            text-align: center; 
+            background: #f8f9fa; 
+        }
+        .notification { 
+            background: #d4edda; 
+            color: #155724; 
+            padding: 1rem; 
+            border-radius: 4px; 
+            margin: 1rem 0; 
+            border: 1px solid #c3e6cb; 
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>📝 RustForm CMS Blog Demo</h1>
+            <nav class="nav">
+                <button onclick="showSection('overview')" class="active" id="overview-btn">Overview</button>
+                <button onclick="showSection('editor')" id="editor-btn">Content Editor</button>
+                <button onclick="showSection('blog')" id="blog-btn">Blog System</button>
+                <button onclick="showSection('media')" id="media-btn">Media Manager</button>
+                <button onclick="showSection('seo')" id="seo-btn">SEO Tools</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Overview Section -->
+        <div id="overview-section" class="demo-section">
+            <h2>📚 CMS & Content Management Components</h2>
+            <p>Comprehensive content management system with <strong>13+ components</strong> for blogs, media, and publishing.</p>
+            
+            <div class="content-grid">
+                <div class="content-item">
+                    <h3>✏️ Content Editor</h3>
+                    <p>Rich text editor with media support and real-time preview</p>
+                    <button class="demo-button" onclick="showSection('editor')">Demo Editor</button>
+                </div>
+                <div class="content-item">
+                    <h3>📰 Blog System</h3>
+                    <p>Complete blog with posts, comments, and publishing workflow</p>
+                    <button class="demo-button" onclick="showSection('blog')">Demo Blog</button>
+                </div>
+                <div class="content-item">
+                    <h3>🖼️ Media Gallery</h3>
+                    <p>File upload, organization, and media management</p>
+                    <button class="demo-button" onclick="showSection('media')">Demo Media</button>
+                </div>
+                <div class="content-item">
+                    <h3>🔍 SEO Optimizer</h3>
+                    <p>SEO analysis, meta tags, and search optimization</p>
+                    <button class="demo-button" onclick="showSection('seo')">Demo SEO</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Editor Section -->
+        <div id="editor-section" class="demo-section hidden">
+            <h2>✏️ Content Editor Demo</h2>
+            <p>Demonstrates: content-editor, content-versioning, content-scheduler, content-workflow</p>
+            
+            <div class="editor-demo">
+                <div class="toolbar">
+                    <button onclick="editorAction('bold')"><b>B</b></button>
+                    <button onclick="editorAction('italic')"><i>I</i></button>
+                    <button onclick="editorAction('underline')"><u>U</u></button>
+                    <button onclick="editorAction('link')">🔗</button>
+                    <button onclick="editorAction('image')">🖼️</button>
+                    <button onclick="editorAction('save')">💾 Save</button>
+                    <button onclick="editorAction('publish')">🚀 Publish</button>
+                </div>
+                <div id="editor-content" contenteditable="true" style="padding: 1rem; min-height: 200px;">
+                    <h2>Welcome to RustForm CMS</h2>
+                    <p>This is a rich text editor with full formatting capabilities. You can <strong>bold text</strong>, <em>italicize</em>, add links, and insert media.</p>
+                    <p>The editor supports real-time collaboration, version control, and content scheduling.</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                <button class="demo-button" onclick="demoVersioning()">View Versions</button>
+                <button class="demo-button" onclick="demoSchedule()">Schedule Publishing</button>
+                <button class="demo-button warning" onclick="demoWorkflow()">Submit for Review</button>
+            </div>
+        </div>
+
+        <!-- Blog Section -->
+        <div id="blog-section" class="demo-section hidden">
+            <h2>📰 Blog System Demo</h2>
+            <p>Demonstrates: blog-system, newsletter-manager, sitemap-generator, theme-manager</p>
+            
+            <div id="blog-posts">
+                <div class="article-card">
+                    <div class="article-header">
+                        <h3>Getting Started with RustForm Components</h3>
+                        <div class="article-meta">Published 2 days ago • 5 min read • 127 views</div>
+                    </div>
+                    <div class="article-content">
+                        <p>Learn how to build powerful web applications using RustForm's comprehensive component library...</p>
+                        <button class="demo-button" onclick="demoReadMore(1)">Read More</button>
+                        <button class="demo-button" onclick="demoComments(1)">Comments (12)</button>
+                    </div>
+                </div>
+
+                <div class="article-card">
+                    <div class="article-header">
+                        <h3>Advanced Authentication Patterns</h3>
+                        <div class="article-meta">Published 1 week ago • 8 min read • 234 views</div>
+                    </div>
+                    <div class="article-content">
+                        <p>Explore JWT, OAuth2, and multi-factor authentication implementations...</p>
+                        <button class="demo-button" onclick="demoReadMore(2)">Read More</button>
+                        <button class="demo-button" onclick="demoComments(2)">Comments (8)</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                <button class="demo-button success" onclick="demoNewPost()">Create New Post</button>
+                <button class="demo-button" onclick="demoNewsletter()">Send Newsletter</button>
+                <button class="demo-button" onclick="demoSitemap()">Generate Sitemap</button>
+            </div>
+        </div>
+
+        <!-- Media Section -->
+        <div id="media-section" class="demo-section hidden">
+            <h2>🖼️ Media Manager Demo</h2>
+            <p>Demonstrates: file-manager, media-gallery, theme-manager, form-builder</p>
+            
+            <div>
+                <button class="demo-button" onclick="demoUpload()">📤 Upload Files</button>
+                <button class="demo-button" onclick="demoOrganize()">📁 Organize Media</button>
+                <button class="demo-button" onclick="demoResize()">🔧 Resize Images</button>
+            </div>
+            
+            <div class="media-grid">
+                <div class="media-item">
+                    <div style="font-size: 2rem;">🖼️</div>
+                    <div>header-image.jpg</div>
+                    <div style="font-size: 0.8rem; color: #666;">1920x1080 • 2.3MB</div>
+                </div>
+                <div class="media-item">
+                    <div style="font-size: 2rem;">📄</div>
+                    <div>product-guide.pdf</div>
+                    <div style="font-size: 0.8rem; color: #666;">PDF • 1.2MB</div>
+                </div>
+                <div class="media-item">
+                    <div style="font-size: 2rem;">🎥</div>
+                    <div>demo-video.mp4</div>
+                    <div style="font-size: 0.8rem; color: #666;">1080p • 45.6MB</div>
+                </div>
+                <div class="media-item">
+                    <div style="font-size: 2rem;">📊</div>
+                    <div>analytics.csv</div>
+                    <div style="font-size: 0.8rem; color: #666;">CSV • 234KB</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEO Section -->
+        <div id="seo-section" class="demo-section hidden">
+            <h2>🔍 SEO Optimizer Demo</h2>
+            <p>Demonstrates: seo-optimizer, sitemap-generator, multi-language, newsletter-manager</p>
+            
+            <div class="content-grid">
+                <div class="content-item">
+                    <h3>📊 SEO Analysis</h3>
+                    <p>Current page score: <strong>85/100</strong></p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>✅ Title tag optimized</li>
+                        <li>✅ Meta description present</li>
+                        <li>⚠️ Missing alt tags on 2 images</li>
+                        <li>✅ Mobile-friendly design</li>
+                    </ul>
+                    <button class="demo-button" onclick="demoSEOAnalysis()">Run Full Analysis</button>
+                </div>
+                
+                <div class="content-item">
+                    <h3>🗺️ Sitemap Generator</h3>
+                    <p>Auto-generate XML sitemaps for search engines</p>
+                    <button class="demo-button" onclick="demoSitemap()">Generate Sitemap</button>
+                    <button class="demo-button" onclick="demoRobots()">Update robots.txt</button>
+                </div>
+                
+                <div class="content-item">
+                    <h3>🌍 Multi-Language Support</h3>
+                    <p>Manage content in multiple languages</p>
+                    <button class="demo-button" onclick="demoTranslate('es')">Add Spanish</button>
+                    <button class="demo-button" onclick="demoTranslate('fr')">Add French</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function showSection(sectionName) {
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.querySelectorAll('.nav button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(sectionName + '-section').classList.remove('hidden');
+            document.getElementById(sectionName + '-btn').classList.add('active');
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.querySelector('.main-content').insertBefore(notification, document.querySelector('.main-content').firstChild);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        function editorAction(action) {
+            const actions = {
+                bold: '✏️ Text formatted as bold',
+                italic: '✏️ Text formatted as italic',
+                underline: '✏️ Text underlined',
+                link: '🔗 Link inserted: https://rustform.com',
+                image: '🖼️ Image inserted from media library',
+                save: '💾 Content saved as draft',
+                publish: '🚀 Content published successfully!'
+            };
+            showNotification(actions[action] || 'Action completed');
+        }
+
+        function demoVersioning() {
+            showNotification('📚 Version history: v1.0 (current), v0.9 (1 hour ago), v0.8 (yesterday)');
+        }
+
+        function demoSchedule() {
+            showNotification('📅 Content scheduled for publication tomorrow at 9:00 AM');
+        }
+
+        function demoWorkflow() {
+            showNotification('📝 Content submitted to editor for review');
+        }
+
+        function demoReadMore(id) {
+            showNotification(`📖 Opening full article ${id} in reader view`);
+        }
+
+        function demoComments(id) {
+            showNotification(`💬 Showing comments for article ${id}`);
+        }
+
+        function demoNewPost() {
+            showNotification('📝 New blog post created. Start writing!');
+        }
+
+        function demoNewsletter() {
+            showNotification('📧 Newsletter sent to 1,247 subscribers');
+        }
+
+        function demoSitemap() {
+            showNotification('🗺️ XML sitemap generated with 156 pages');
+        }
+
+        function demoUpload() {
+            showNotification('📤 3 files uploaded successfully to media library');
+        }
+
+        function demoOrganize() {
+            showNotification('📁 Media organized into folders: Images, Documents, Videos');
+        }
+
+        function demoResize() {
+            showNotification('🔧 Images resized for web optimization (WebP format)');
+        }
+
+        function demoSEOAnalysis() {
+            showNotification('📊 SEO analysis complete: 85/100 score. 3 recommendations provided.');
+        }
+
+        function demoRobots() {
+            showNotification('🤖 robots.txt updated with new directives');
+        }
+
+        function demoTranslate(lang) {
+            const languages = { es: 'Spanish', fr: 'French' };
+            showNotification(`🌍 ${languages[lang]} translation interface enabled`);
+        }
+    </script>
+</body>
+</html>

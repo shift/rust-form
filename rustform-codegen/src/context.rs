@@ -1,7 +1,9 @@
-use serde::{Serialize, Deserialize};
-use rustform_core::{Config, ModelConfig, FieldConfig, EndpointConfig, MiddlewareConfig, FieldType};
-use tera::Context;
 use indexmap;
+use rustform_core::{
+    Config, EndpointConfig, FieldConfig, FieldType, MiddlewareConfig, ModelConfig,
+};
+use serde::{Deserialize, Serialize};
+use tera::Context;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GenerationContext {
@@ -166,7 +168,7 @@ impl ContextBuilder {
         let middleware = Self::build_middleware_context(&config.middleware);
         let features = Self::analyze_features(&models, &endpoints, &middleware);
         let dependencies = Self::generate_dependencies(&features, &config.database);
-        
+
         GenerationContext {
             project_name: config.project_name.clone(),
             version: config.version.clone(),
@@ -180,7 +182,7 @@ impl ContextBuilder {
             metadata: Self::build_metadata(&config, &models),
         }
     }
-    
+
     pub fn to_tera_context(gen_context: &GenerationContext) -> Context {
         let mut context = Context::new();
         context.insert("project", gen_context);
@@ -196,20 +198,20 @@ impl ContextBuilder {
         context.insert("metadata", &gen_context.metadata);
         context
     }
-    
+
     fn build_database_context(db_config: &rustform_core::DatabaseConfig) -> DatabaseContext {
         let db_type = match db_config.db_type {
             rustform_core::DatabaseType::Sqlite => "sqlite",
-            rustform_core::DatabaseType::Postgres => "postgres", 
+            rustform_core::DatabaseType::Postgres => "postgres",
             rustform_core::DatabaseType::Mysql => "mysql",
         };
-        
+
         let driver_features = match db_config.db_type {
             rustform_core::DatabaseType::Sqlite => vec!["sqlite".to_string()],
             rustform_core::DatabaseType::Postgres => vec!["postgres".to_string()],
             rustform_core::DatabaseType::Mysql => vec!["mysql".to_string()],
         };
-        
+
         DatabaseContext {
             db_type: db_type.to_string(),
             url_env: db_config.url_env.clone(),
@@ -218,14 +220,14 @@ impl ContextBuilder {
             driver_features,
         }
     }
-    
+
     fn build_server_context(server_config: &rustform_core::ServerConfig) -> ServerContext {
         ServerContext {
             host: server_config.host.clone(),
             port: server_config.port,
         }
     }
-    
+
     fn build_models_context(models: &indexmap::IndexMap<String, ModelConfig>) -> Vec<ModelContext> {
         models
             .iter()
@@ -233,23 +235,21 @@ impl ContextBuilder {
                 let fields = Self::build_fields_context(&model.fields);
                 let relationships = Self::build_relationships_context(&model.relationships);
                 let indexes = Self::build_indexes_context(&model.indexes);
-                
+
                 let primary_key_field = fields
                     .iter()
                     .find(|f| f.is_primary_key)
                     .map(|f| f.name.clone());
-                
+
                 let primary_key_type = fields
                     .iter()
                     .find(|f| f.is_primary_key)
                     .map(|f| f.rust_type.clone());
-                
-                let has_timestamps = fields
-                    .iter()
-                    .any(|f| f.auto_now || f.auto_now_add);
-                
+
+                let has_timestamps = fields.iter().any(|f| f.auto_now || f.auto_now_add);
+
                 let imports = Self::generate_model_imports(&fields);
-                
+
                 let custom_logic = model.custom_logic.as_ref().map(|cl| CustomLogicContext {
                     file: cl.file.clone(),
                     dependencies: cl.dependencies.clone(),
@@ -266,7 +266,7 @@ impl ContextBuilder {
                         after_query: h.after_query.clone(),
                     }),
                 });
-                
+
                 ModelContext {
                     name: name.clone(),
                     table_name: model.table_name.clone(),
@@ -284,15 +284,16 @@ impl ContextBuilder {
             })
             .collect()
     }
-    
+
     fn build_fields_context(fields: &indexmap::IndexMap<String, FieldConfig>) -> Vec<FieldContext> {
         fields
             .iter()
             .map(|(name, field)| {
-                let rust_type = Self::field_type_to_rust(&field.field_type, field.nullable || !field.required);
+                let rust_type =
+                    Self::field_type_to_rust(&field.field_type, field.nullable || !field.required);
                 let sql_type = Self::field_type_to_sql(&field.field_type);
                 let constraints = Self::build_field_constraints(field);
-                
+
                 FieldContext {
                     name: name.clone(),
                     field_type: Self::field_type_to_string(&field.field_type),
@@ -318,8 +319,10 @@ impl ContextBuilder {
             })
             .collect()
     }
-    
-    fn build_relationships_context(relationships: &indexmap::IndexMap<String, rustform_core::RelationshipConfig>) -> Vec<RelationshipContext> {
+
+    fn build_relationships_context(
+        relationships: &indexmap::IndexMap<String, rustform_core::RelationshipConfig>,
+    ) -> Vec<RelationshipContext> {
         relationships
             .iter()
             .map(|(name, rel)| RelationshipContext {
@@ -332,7 +335,7 @@ impl ContextBuilder {
             })
             .collect()
     }
-    
+
     fn build_indexes_context(indexes: &[rustform_core::IndexConfig]) -> Vec<IndexContext> {
         indexes
             .iter()
@@ -344,35 +347,46 @@ impl ContextBuilder {
             })
             .collect()
     }
-    
-    fn build_endpoints_context(endpoints: &[EndpointConfig], models: &[ModelContext]) -> Vec<EndpointContext> {
+
+    fn build_endpoints_context(
+        endpoints: &[EndpointConfig],
+        models: &[ModelContext],
+    ) -> Vec<EndpointContext> {
         endpoints
             .iter()
             .map(|endpoint| {
                 let model = models.iter().find(|m| m.name == endpoint.model).unwrap();
                 let operations = Self::build_crud_operations(&endpoint.crud);
                 let has_auth = endpoint.auth.is_some();
-                let auth_type = endpoint.auth.as_ref().map(|auth| Self::auth_type_to_string(&auth.auth_type));
+                let auth_type = endpoint
+                    .auth
+                    .as_ref()
+                    .map(|auth| Self::auth_type_to_string(&auth.auth_type));
                 let has_pagination = endpoint.pagination.is_some();
                 let pagination = endpoint.pagination.as_ref().map(|p| PaginationContext {
                     default_page_size: p.default_page_size,
                     max_page_size: p.max_page_size,
                 });
                 let filters = Self::build_filters_context(&endpoint.filters);
-                let handler_functions = Self::generate_handler_functions(&operations, &endpoint.path);
-                
-                let custom_handlers = endpoint.custom_handlers.as_ref().map(|ch| CustomHandlersContext {
-                    file: ch.file.clone(),
-                    dependencies: ch.dependencies.clone(),
-                    handlers: ch.handlers.clone(),
-                    middleware: ch.middleware.clone(),
-                    validation: ch.validation.as_ref().map(|v| CustomValidationContext {
-                        before_create: v.before_create.clone(),
-                        before_update: v.before_update.clone(),
-                        custom_validators: v.custom_validators.clone(),
-                    }),
-                });
-                
+                let handler_functions =
+                    Self::generate_handler_functions(&operations, &endpoint.path);
+
+                let custom_handlers =
+                    endpoint
+                        .custom_handlers
+                        .as_ref()
+                        .map(|ch| CustomHandlersContext {
+                            file: ch.file.clone(),
+                            dependencies: ch.dependencies.clone(),
+                            handlers: ch.handlers.clone(),
+                            middleware: ch.middleware.clone(),
+                            validation: ch.validation.as_ref().map(|v| CustomValidationContext {
+                                before_create: v.before_create.clone(),
+                                before_update: v.before_update.clone(),
+                                custom_validators: v.custom_validators.clone(),
+                            }),
+                        });
+
                 EndpointContext {
                     path: endpoint.path.clone(),
                     model_name: endpoint.model.clone(),
@@ -389,7 +403,7 @@ impl ContextBuilder {
             })
             .collect()
     }
-    
+
     fn build_middleware_context(middleware: &[MiddlewareConfig]) -> Vec<MiddlewareContext> {
         middleware
             .iter()
@@ -410,8 +424,10 @@ impl ContextBuilder {
                     name: "rate_limit".to_string(),
                     config: serde_json::to_value(rate_limit).unwrap_or_default(),
                     imports: vec!["tower::limit::RateLimitLayer".to_string()],
-                    setup_code: format!("RateLimitLayer::new({}, Duration::from_secs({}))", 
-                                       rate_limit.max_requests, rate_limit.window_seconds),
+                    setup_code: format!(
+                        "RateLimitLayer::new({}, Duration::from_secs({}))",
+                        rate_limit.max_requests, rate_limit.window_seconds
+                    ),
                 },
                 MiddlewareConfig::Compression { compression } => MiddlewareContext {
                     name: "compression".to_string(),
@@ -423,33 +439,49 @@ impl ContextBuilder {
                     name: "security".to_string(),
                     config: serde_json::to_value(security).unwrap_or_default(),
                     imports: vec!["tower_http::set_header::SetResponseHeaderLayer".to_string()],
-                    setup_code: "SetResponseHeaderLayer::overriding(\"x-frame-options\", \"DENY\")".to_string(),
+                    setup_code: "SetResponseHeaderLayer::overriding(\"x-frame-options\", \"DENY\")"
+                        .to_string(),
                 },
             })
             .collect()
     }
-    
-    fn analyze_features(models: &[ModelContext], endpoints: &[EndpointContext], middleware: &[MiddlewareContext]) -> ProjectFeatures {
+
+    fn analyze_features(
+        models: &[ModelContext],
+        endpoints: &[EndpointContext],
+        middleware: &[MiddlewareContext],
+    ) -> ProjectFeatures {
         ProjectFeatures {
             has_auth: endpoints.iter().any(|e| e.has_auth),
             has_pagination: endpoints.iter().any(|e| e.has_pagination),
             has_filtering: endpoints.iter().any(|e| !e.filters.is_empty()),
             has_relationships: models.iter().any(|m| !m.relationships.is_empty()),
             has_middleware: !middleware.is_empty(),
-            has_validation: models.iter().any(|m| m.fields.iter().any(|f| 
-                f.validation.max_length.is_some() || 
-                f.validation.min_length.is_some() || 
-                f.validation.regex.is_some()
-            )),
-            has_json_fields: models.iter().any(|m| m.fields.iter().any(|f| f.field_type == "json")),
-            has_uuid_fields: models.iter().any(|m| m.fields.iter().any(|f| f.field_type == "uuid")),
-            has_datetime_fields: models.iter().any(|m| m.fields.iter().any(|f| 
-                f.field_type == "datetime" || f.field_type == "date" || f.field_type == "time"
-            )),
+            has_validation: models.iter().any(|m| {
+                m.fields.iter().any(|f| {
+                    f.validation.max_length.is_some()
+                        || f.validation.min_length.is_some()
+                        || f.validation.regex.is_some()
+                })
+            }),
+            has_json_fields: models
+                .iter()
+                .any(|m| m.fields.iter().any(|f| f.field_type == "json")),
+            has_uuid_fields: models
+                .iter()
+                .any(|m| m.fields.iter().any(|f| f.field_type == "uuid")),
+            has_datetime_fields: models.iter().any(|m| {
+                m.fields.iter().any(|f| {
+                    f.field_type == "datetime" || f.field_type == "date" || f.field_type == "time"
+                })
+            }),
         }
     }
-    
-    fn generate_dependencies(features: &ProjectFeatures, db_config: &rustform_core::DatabaseConfig) -> Vec<String> {
+
+    fn generate_dependencies(
+        features: &ProjectFeatures,
+        db_config: &rustform_core::DatabaseConfig,
+    ) -> Vec<String> {
         let mut deps = vec![
             "axum".to_string(),
             "tokio".to_string(),
@@ -462,34 +494,34 @@ impl ContextBuilder {
             "tracing".to_string(),
             "tracing-subscriber".to_string(),
         ];
-        
+
         // Database-specific dependencies
         match db_config.db_type {
             rustform_core::DatabaseType::Sqlite => deps.push("sqlx/sqlite".to_string()),
             rustform_core::DatabaseType::Postgres => deps.push("sqlx/postgres".to_string()),
             rustform_core::DatabaseType::Mysql => deps.push("sqlx/mysql".to_string()),
         }
-        
+
         if features.has_uuid_fields {
             deps.push("uuid".to_string());
         }
-        
+
         if features.has_datetime_fields {
             deps.push("chrono".to_string());
         }
-        
+
         if features.has_validation {
             deps.push("validator".to_string());
         }
-        
+
         deps.sort();
         deps.dedup();
         deps
     }
-    
+
     fn build_metadata(config: &Config, models: &[ModelContext]) -> ProjectMetadata {
         use chrono::Utc;
-        
+
         ProjectMetadata {
             generated_at: Utc::now().to_rfc3339(),
             generator_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -499,10 +531,11 @@ impl ContextBuilder {
                 rustform_core::DatabaseType::Sqlite => "sqlite",
                 rustform_core::DatabaseType::Postgres => "postgres",
                 rustform_core::DatabaseType::Mysql => "mysql",
-            }.to_string(),
+            }
+            .to_string(),
         }
     }
-    
+
     // Helper functions
     fn field_type_to_rust(field_type: &FieldType, optional: bool) -> String {
         let base_type = match field_type {
@@ -520,14 +553,14 @@ impl ContextBuilder {
             FieldType::Decimal => "rust_decimal::Decimal",
             FieldType::Binary => "Vec<u8>",
         };
-        
+
         if optional {
             format!("Option<{}>", base_type)
         } else {
             base_type.to_string()
         }
     }
-    
+
     fn field_type_to_sql(field_type: &FieldType) -> String {
         match field_type {
             FieldType::Integer => "INTEGER",
@@ -543,13 +576,14 @@ impl ContextBuilder {
             FieldType::Double => "DOUBLE PRECISION",
             FieldType::Decimal => "DECIMAL",
             FieldType::Binary => "BLOB",
-        }.to_string()
+        }
+        .to_string()
     }
-    
+
     fn field_type_to_string(field_type: &FieldType) -> String {
         match field_type {
             FieldType::Integer => "integer",
-            FieldType::String => "string", 
+            FieldType::String => "string",
             FieldType::Boolean => "boolean",
             FieldType::DateTime => "datetime",
             FieldType::Date => "date",
@@ -561,18 +595,20 @@ impl ContextBuilder {
             FieldType::Double => "double",
             FieldType::Decimal => "decimal",
             FieldType::Binary => "binary",
-        }.to_string()
+        }
+        .to_string()
     }
-    
+
     fn relationship_type_to_string(rel_type: &rustform_core::RelationshipType) -> String {
         match rel_type {
             rustform_core::RelationshipType::OneToOne => "one_to_one",
             rustform_core::RelationshipType::OneToMany => "one_to_many",
             rustform_core::RelationshipType::ManyToOne => "many_to_one",
             rustform_core::RelationshipType::ManyToMany => "many_to_many",
-        }.to_string()
+        }
+        .to_string()
     }
-    
+
     fn action_to_string(action: &rustform_core::OnDeleteAction) -> String {
         match action {
             rustform_core::OnDeleteAction::Cascade => "cascade",
@@ -580,9 +616,10 @@ impl ContextBuilder {
             rustform_core::OnDeleteAction::SetNull => "set_null",
             rustform_core::OnDeleteAction::SetDefault => "set_default",
             rustform_core::OnDeleteAction::NoAction => "no_action",
-        }.to_string()
+        }
+        .to_string()
     }
-    
+
     fn update_action_to_string(action: &rustform_core::OnUpdateAction) -> String {
         match action {
             rustform_core::OnUpdateAction::Cascade => "cascade",
@@ -590,38 +627,53 @@ impl ContextBuilder {
             rustform_core::OnUpdateAction::SetNull => "set_null",
             rustform_core::OnUpdateAction::SetDefault => "set_default",
             rustform_core::OnUpdateAction::NoAction => "no_action",
-        }.to_string()
+        }
+        .to_string()
     }
-    
+
     fn index_type_to_string(index_type: &rustform_core::IndexType) -> String {
         match index_type {
             rustform_core::IndexType::Btree => "btree",
             rustform_core::IndexType::Hash => "hash",
             rustform_core::IndexType::Gin => "gin",
             rustform_core::IndexType::Gist => "gist",
-        }.to_string()
+        }
+        .to_string()
     }
-    
+
     fn auth_type_to_string(auth_type: &rustform_core::AuthType) -> String {
         match auth_type {
             rustform_core::AuthType::Bearer => "bearer",
             rustform_core::AuthType::Basic => "basic",
             rustform_core::AuthType::ApiKey => "api_key",
             rustform_core::AuthType::Jwt => "jwt",
-        }.to_string()
+        }
+        .to_string()
     }
-    
+
     fn build_crud_operations(crud: &rustform_core::CrudConfig) -> Vec<String> {
         let mut ops = Vec::new();
-        if crud.create { ops.push("create".to_string()); }
-        if crud.read_all { ops.push("read_all".to_string()); }
-        if crud.read_one { ops.push("read_one".to_string()); }
-        if crud.update { ops.push("update".to_string()); }
-        if crud.patch { ops.push("patch".to_string()); }
-        if crud.delete { ops.push("delete".to_string()); }
+        if crud.create {
+            ops.push("create".to_string());
+        }
+        if crud.read_all {
+            ops.push("read_all".to_string());
+        }
+        if crud.read_one {
+            ops.push("read_one".to_string());
+        }
+        if crud.update {
+            ops.push("update".to_string());
+        }
+        if crud.patch {
+            ops.push("patch".to_string());
+        }
+        if crud.delete {
+            ops.push("delete".to_string());
+        }
         ops
     }
-    
+
     fn build_filters_context(filters: &[rustform_core::FilterConfig]) -> Vec<FilterContext> {
         filters
             .iter()
@@ -632,7 +684,7 @@ impl ContextBuilder {
             })
             .collect()
     }
-    
+
     fn filter_type_to_string(filter_type: &rustform_core::FilterType) -> String {
         match filter_type {
             rustform_core::FilterType::Exact => "exact",
@@ -645,9 +697,10 @@ impl ContextBuilder {
             rustform_core::FilterType::LessThanOrEqual => "less_than_or_equal",
             rustform_core::FilterType::In => "in",
             rustform_core::FilterType::Between => "between",
-        }.to_string()
+        }
+        .to_string()
     }
-    
+
     fn generate_handler_functions(operations: &[String], path: &str) -> Vec<String> {
         let base_name = path.trim_start_matches('/').replace('/', "_");
         operations
@@ -655,72 +708,77 @@ impl ContextBuilder {
             .map(|op| format!("{}_{}", op, base_name))
             .collect()
     }
-    
+
     fn build_field_constraints(field: &FieldConfig) -> Vec<String> {
         let mut constraints = Vec::new();
-        
+
         if field.required {
             constraints.push("NOT NULL".to_string());
         }
-        
+
         if field.unique {
             constraints.push("UNIQUE".to_string());
         }
-        
+
         if field.primary_key {
             constraints.push("PRIMARY KEY".to_string());
         }
-        
+
         if field.auto_increment {
             constraints.push("AUTOINCREMENT".to_string());
         }
-        
+
         constraints
     }
-    
+
     fn generate_model_imports(fields: &[FieldContext]) -> Vec<String> {
         let mut imports = Vec::new();
-        
+
         if fields.iter().any(|f| f.field_type == "uuid") {
             imports.push("uuid::Uuid".to_string());
         }
-        
-        if fields.iter().any(|f| f.field_type == "datetime" || f.field_type == "date" || f.field_type == "time") {
+
+        if fields
+            .iter()
+            .any(|f| f.field_type == "datetime" || f.field_type == "date" || f.field_type == "time")
+        {
             imports.push("chrono".to_string());
         }
-        
+
         if fields.iter().any(|f| f.field_type == "json") {
             imports.push("serde_json::Value".to_string());
         }
-        
+
         if fields.iter().any(|f| f.field_type == "decimal") {
             imports.push("rust_decimal::Decimal".to_string());
         }
-        
+
         imports.push("serde::{Deserialize, Serialize}".to_string());
         imports.push("sqlx::FromRow".to_string());
-        
+
         imports.sort();
         imports.dedup();
         imports
     }
-    
+
     fn to_pascal_case(s: &str) -> String {
         s.split(&['_', '-', ' '][..])
             .map(|word| {
                 let mut chars = word.chars();
                 match chars.next() {
                     None => String::new(),
-                    Some(first) => first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
+                    Some(first) => {
+                        first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
+                    }
                 }
             })
             .collect()
     }
-    
+
     fn to_snake_case(s: &str) -> String {
         let mut result = String::new();
         let mut prev_lowercase = false;
-        
+
         for (i, c) in s.chars().enumerate() {
             if c.is_uppercase() && i > 0 && prev_lowercase {
                 result.push('_');
@@ -728,7 +786,7 @@ impl ContextBuilder {
             result.push(c.to_lowercase().next().unwrap());
             prev_lowercase = c.is_lowercase();
         }
-        
+
         result
     }
 }

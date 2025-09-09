@@ -1,29 +1,29 @@
+use crate::component::{ComponentUri, DependencyGraph};
+use crate::error::Result;
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 use std::str::FromStr;
-use crate::error::Result;
-use crate::component::{ComponentUri, DependencyGraph};
-use semver::Version;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComponentLockfile {
     /// Lockfile format version
     pub version: u32,
-    
+
     /// When this lockfile was generated
     pub generated: String,
-    
+
     /// System info when generated  
     pub generator: GeneratorInfo,
-    
+
     /// Resolved dependencies with exact versions
     pub dependencies: HashMap<String, LockedComponent>,
-    
+
     /// Dependency resolution tree
     pub resolution_tree: ResolutionTree,
-    
+
     /// Metadata for reproducible builds
     pub metadata: LockfileMetadata,
 }
@@ -32,22 +32,22 @@ pub struct ComponentLockfile {
 pub struct LockedComponent {
     /// Original URI as specified
     pub uri: String,
-    
+
     /// Resolved version
     pub version: String,
-    
+
     /// Resolved URL for fetching
     pub resolved: String,
-    
+
     /// Integrity hash (SRI format)
     pub integrity: String,
-    
+
     /// Direct dependencies of this component
     pub dependencies: HashMap<String, String>,
-    
+
     /// When this component was resolved
     pub resolved_at: String,
-    
+
     /// Size in bytes (if known)
     pub size: Option<u64>,
 }
@@ -56,10 +56,10 @@ pub struct LockedComponent {
 pub struct GeneratorInfo {
     /// Tool that generated this lockfile
     pub name: String,
-    
+
     /// Version of the generator
     pub version: String,
-    
+
     /// Platform info
     pub platform: PlatformInfo,
 }
@@ -75,7 +75,7 @@ pub struct PlatformInfo {
 pub struct ResolutionTree {
     /// Root component being built
     pub root: String,
-    
+
     /// Tree of resolved dependencies
     pub dependencies: HashMap<String, ResolutionNode>,
 }
@@ -84,10 +84,10 @@ pub struct ResolutionTree {
 pub struct ResolutionNode {
     /// Resolved version
     pub version: String,
-    
+
     /// Why this version was chosen
     pub reason: ResolutionReason,
-    
+
     /// Direct children in the resolution tree
     pub dependencies: Vec<String>,
 }
@@ -97,14 +97,14 @@ pub struct ResolutionNode {
 pub enum ResolutionReason {
     /// Directly specified in manifest
     Direct { constraint: String },
-    
+
     /// Resolved as transitive dependency
-    Transitive { 
+    Transitive {
         via: String,
         constraint: String,
         resolved_constraint: String,
     },
-    
+
     /// Version chosen to satisfy multiple constraints
     Conflict {
         constraints: Vec<String>,
@@ -116,13 +116,13 @@ pub enum ResolutionReason {
 pub struct LockfileMetadata {
     /// Total number of components
     pub component_count: usize,
-    
+
     /// Total resolved size in bytes
     pub total_size: u64,
-    
+
     /// Resolution statistics
     pub resolution_stats: ResolutionStats,
-    
+
     /// Platform-specific metadata
     pub platform_metadata: HashMap<String, serde_json::Value>,
 }
@@ -131,13 +131,13 @@ pub struct LockfileMetadata {
 pub struct ResolutionStats {
     /// Time taken to resolve dependencies (milliseconds)
     pub resolution_time_ms: u64,
-    
+
     /// Number of HTTP requests made
     pub http_requests: u32,
-    
+
     /// Number of cache hits
     pub cache_hits: u32,
-    
+
     /// Number of version conflicts resolved
     pub conflicts_resolved: u32,
 }
@@ -171,7 +171,7 @@ impl ComponentLockfile {
     pub fn from_dependency_graph(graph: &DependencyGraph) -> Self {
         let mut lockfile = Self::new();
         lockfile.resolution_tree.root = graph.root.name.clone();
-        
+
         for (name, resolved) in &graph.resolved {
             let locked_component = LockedComponent {
                 uri: resolved.uri.to_string(),
@@ -182,22 +182,27 @@ impl ComponentLockfile {
                 resolved_at: chrono::Utc::now().to_rfc3339(),
                 size: None,
             };
-            
+
             lockfile.dependencies.insert(name.clone(), locked_component);
-            
+
             let resolution_node = ResolutionNode {
                 version: resolved.version.to_string(),
                 reason: ResolutionReason::Direct {
                     constraint: format!("^{}", resolved.version),
                 },
-                dependencies: resolved.dependencies.iter()
+                dependencies: resolved
+                    .dependencies
+                    .iter()
                     .map(|dep| dep.uri.to_string())
                     .collect(),
             };
-            
-            lockfile.resolution_tree.dependencies.insert(name.clone(), resolution_node);
+
+            lockfile
+                .resolution_tree
+                .dependencies
+                .insert(name.clone(), resolution_node);
         }
-        
+
         lockfile.metadata.component_count = graph.resolved.len();
         lockfile
     }
@@ -228,43 +233,58 @@ impl ComponentLockfile {
     /// Validate lockfile integrity
     pub fn validate(&self) -> Result<Vec<String>> {
         let mut issues = Vec::new();
-        
+
         // Check version compatibility
         if self.version > 1 {
             issues.push(format!("Unsupported lockfile version: {}", self.version));
         }
-        
+
         // Validate dependency references
         for (name, locked) in &self.dependencies {
             // Check if URI is valid
             if ComponentUri::from_str(&locked.uri).is_err() {
-                issues.push(format!("Invalid URI for component '{}': {}", name, locked.uri));
+                issues.push(format!(
+                    "Invalid URI for component '{}': {}",
+                    name, locked.uri
+                ));
             }
-            
+
             // Check if version is valid semantic version
             if Version::parse(&locked.version).is_err() {
-                issues.push(format!("Invalid version for component '{}': {}", name, locked.version));
+                issues.push(format!(
+                    "Invalid version for component '{}': {}",
+                    name, locked.version
+                ));
             }
-            
+
             // Check integrity format
             if !locked.integrity.is_empty() && !locked.integrity.contains('-') {
-                issues.push(format!("Invalid integrity format for component '{}': {}", name, locked.integrity));
+                issues.push(format!(
+                    "Invalid integrity format for component '{}': {}",
+                    name, locked.integrity
+                ));
             }
         }
-        
+
         // Check resolution tree consistency
         for (name, node) in &self.resolution_tree.dependencies {
             if !self.dependencies.contains_key(name) {
-                issues.push(format!("Resolution tree references missing component: {}", name));
+                issues.push(format!(
+                    "Resolution tree references missing component: {}",
+                    name
+                ));
             }
-            
+
             for dep_name in &node.dependencies {
                 if !self.dependencies.contains_key(dep_name) {
-                    issues.push(format!("Component '{}' references missing dependency: {}", name, dep_name));
+                    issues.push(format!(
+                        "Component '{}' references missing dependency: {}",
+                        name, dep_name
+                    ));
                 }
             }
         }
-        
+
         Ok(issues)
     }
 
@@ -274,7 +294,10 @@ impl ComponentLockfile {
         for (name, constraint) in manifest_dependencies {
             if let Some(locked) = self.dependencies.get(name) {
                 // Verify that locked version satisfies constraint
-                if let (Ok(version), Ok(req)) = (Version::parse(&locked.version), semver::VersionReq::parse(constraint)) {
+                if let (Ok(version), Ok(req)) = (
+                    Version::parse(&locked.version),
+                    semver::VersionReq::parse(constraint),
+                ) {
                     if !req.matches(&version) {
                         return false;
                     }
@@ -285,7 +308,7 @@ impl ComponentLockfile {
                 return false;
             }
         }
-        
+
         // Check if lockfile has extra dependencies not in manifest
         for name in self.dependencies.keys() {
             if !manifest_dependencies.contains_key(name) {
@@ -293,7 +316,7 @@ impl ComponentLockfile {
                 continue;
             }
         }
-        
+
         true
     }
 
@@ -301,15 +324,24 @@ impl ComponentLockfile {
     pub fn installation_order(&self) -> Vec<String> {
         let mut visited = std::collections::HashSet::new();
         let mut result = Vec::new();
-        
+
         // Start from root and do depth-first traversal
-        if let Some(root_node) = self.resolution_tree.dependencies.get(&self.resolution_tree.root) {
-            self.visit_for_installation_order(&self.resolution_tree.root, root_node, &mut visited, &mut result);
+        if let Some(root_node) = self
+            .resolution_tree
+            .dependencies
+            .get(&self.resolution_tree.root)
+        {
+            self.visit_for_installation_order(
+                &self.resolution_tree.root,
+                root_node,
+                &mut visited,
+                &mut result,
+            );
         }
-        
+
         result
     }
-    
+
     fn visit_for_installation_order(
         &self,
         name: &str,
@@ -320,16 +352,16 @@ impl ComponentLockfile {
         if visited.contains(name) {
             return;
         }
-        
+
         visited.insert(name.to_string());
-        
+
         // Visit dependencies first
         for dep_name in &node.dependencies {
             if let Some(dep_node) = self.resolution_tree.dependencies.get(dep_name) {
                 self.visit_for_installation_order(dep_name, dep_node, visited, result);
             }
         }
-        
+
         result.push(name.to_string());
     }
 
@@ -337,7 +369,9 @@ impl ComponentLockfile {
     pub fn update_metadata(&mut self, stats: ResolutionStats) {
         self.metadata.resolution_stats = stats;
         self.metadata.component_count = self.dependencies.len();
-        self.metadata.total_size = self.dependencies.values()
+        self.metadata.total_size = self
+            .dependencies
+            .values()
             .filter_map(|locked| locked.size)
             .sum();
     }
@@ -362,12 +396,14 @@ impl ComponentLockfile {
                 self.dependencies.insert(name.clone(), locked.clone());
             }
         }
-        
+
         // Merge resolution trees
         for (name, node) in &other.resolution_tree.dependencies {
-            self.resolution_tree.dependencies.insert(name.clone(), node.clone());
+            self.resolution_tree
+                .dependencies
+                .insert(name.clone(), node.clone());
         }
-        
+
         self.metadata.component_count = self.dependencies.len();
         Ok(())
     }
@@ -416,7 +452,7 @@ mod tests {
         let lockfile = ComponentLockfile::new();
         let yaml = lockfile.to_yaml().unwrap();
         let parsed = ComponentLockfile::from_yaml(&yaml).unwrap();
-        
+
         assert_eq!(lockfile.version, parsed.version);
         assert_eq!(lockfile.generator.name, parsed.generator.name);
     }
@@ -424,7 +460,7 @@ mod tests {
     #[test]
     fn test_lockfile_validation() {
         let mut lockfile = ComponentLockfile::new();
-        
+
         // Add invalid component
         let invalid_locked = LockedComponent {
             uri: "invalid-uri-format".to_string(),
@@ -435,9 +471,11 @@ mod tests {
             resolved_at: chrono::Utc::now().to_rfc3339(),
             size: None,
         };
-        
-        lockfile.dependencies.insert("invalid".to_string(), invalid_locked);
-        
+
+        lockfile
+            .dependencies
+            .insert("invalid".to_string(), invalid_locked);
+
         let issues = lockfile.validate().unwrap();
         assert!(!issues.is_empty());
     }
@@ -446,14 +484,16 @@ mod tests {
     fn test_installation_order() {
         let mut lockfile = ComponentLockfile::new();
         lockfile.resolution_tree.root = "app".to_string();
-        
+
         // Create simple dependency chain: app -> ui-kit -> icons
         let app_node = ResolutionNode {
             version: "1.0.0".to_string(),
-            reason: ResolutionReason::Direct { constraint: "^1.0.0".to_string() },
+            reason: ResolutionReason::Direct {
+                constraint: "^1.0.0".to_string(),
+            },
             dependencies: vec!["ui-kit".to_string()],
         };
-        
+
         let ui_kit_node = ResolutionNode {
             version: "2.0.0".to_string(),
             reason: ResolutionReason::Transitive {
@@ -463,7 +503,7 @@ mod tests {
             },
             dependencies: vec!["icons".to_string()],
         };
-        
+
         let icons_node = ResolutionNode {
             version: "1.5.0".to_string(),
             reason: ResolutionReason::Transitive {
@@ -473,18 +513,27 @@ mod tests {
             },
             dependencies: vec![],
         };
-        
-        lockfile.resolution_tree.dependencies.insert("app".to_string(), app_node);
-        lockfile.resolution_tree.dependencies.insert("ui-kit".to_string(), ui_kit_node);
-        lockfile.resolution_tree.dependencies.insert("icons".to_string(), icons_node);
-        
+
+        lockfile
+            .resolution_tree
+            .dependencies
+            .insert("app".to_string(), app_node);
+        lockfile
+            .resolution_tree
+            .dependencies
+            .insert("ui-kit".to_string(), ui_kit_node);
+        lockfile
+            .resolution_tree
+            .dependencies
+            .insert("icons".to_string(), icons_node);
+
         let order = lockfile.installation_order();
-        
+
         // icons should come before ui-kit, ui-kit before app
         let icons_pos = order.iter().position(|x| x == "icons").unwrap();
         let ui_kit_pos = order.iter().position(|x| x == "ui-kit").unwrap();
         let app_pos = order.iter().position(|x| x == "app").unwrap();
-        
+
         assert!(icons_pos < ui_kit_pos);
         assert!(ui_kit_pos < app_pos);
     }

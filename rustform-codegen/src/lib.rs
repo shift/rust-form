@@ -1,10 +1,10 @@
 pub mod context;
+pub mod docs;
 pub mod engine;
-pub mod pipeline;
 pub mod error;
+pub mod pipeline;
 pub mod templates;
 pub mod testing;
-pub mod docs;
 
 #[cfg(test)]
 mod tests;
@@ -12,7 +12,7 @@ mod tests;
 #[cfg(test)]
 mod pipeline_test;
 
-pub use engine::*;
-pub use pipeline::*;
 pub use context::*;
+pub use engine::*;
 pub use error::*;
+pub use pipeline::*;

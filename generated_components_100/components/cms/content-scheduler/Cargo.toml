@@ -1,0 +1,14 @@
+[package]
+name = "content-scheduler"
+version = "1.0.0"
+edition = "2021"
+
+[workspace]
+
+[lib]
+name = "content_scheduler"
+path = "src/lib_test.rs"
+
+[dependencies]
+multer = "2.1"
+mime = "0.3"

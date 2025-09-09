@@ -1,9 +1,9 @@
+use crate::component::{Component, ComponentManifest, ComponentUri, IntegrityVerifier};
 use crate::error::Result;
-use crate::component::{Component, ComponentUri, IntegrityVerifier, ComponentManifest};
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::fs;
 use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone)]
@@ -23,14 +23,13 @@ struct CachedComponent {
 
 impl ComponentCache {
     pub fn new() -> Result<Self> {
-        let cache_dir = std::env::var("RUSTFORM_CACHE_DIR")
-            .unwrap_or_else(|_| {
-                dirs::cache_dir()
-                    .unwrap_or_else(|| PathBuf::from(".cache"))
-                    .join("rustform")
-                    .to_string_lossy()
-                    .to_string()
-            });
+        let cache_dir = std::env::var("RUSTFORM_CACHE_DIR").unwrap_or_else(|_| {
+            dirs::cache_dir()
+                .unwrap_or_else(|| PathBuf::from(".cache"))
+                .join("rustform")
+                .to_string_lossy()
+                .to_string()
+        });
 
         let cache_path = PathBuf::from(cache_dir);
         fs::create_dir_all(&cache_path).ok();
@@ -50,11 +49,11 @@ impl ComponentCache {
     /// Get component from cache
     pub fn get(&mut self, uri: &ComponentUri) -> Result<Option<Component>> {
         let key = uri.cache_key();
-        
+
         if let Some(cached) = self.components.get_mut(&key) {
             // Update access statistics
             cached.access_count += 1;
-            
+
             // Verify integrity periodically (every 24 hours)
             let should_verify = cached.last_verified.map_or(true, |last| {
                 chrono::Utc::now().signed_duration_since(last).num_hours() > 24
@@ -64,10 +63,16 @@ impl ComponentCache {
                 match self.integrity_verifier.verify(&cached.component) {
                     Ok(()) => {
                         cached.last_verified = Some(chrono::Utc::now());
-                        debug!("Integrity verification passed for cached component: {}", key);
+                        debug!(
+                            "Integrity verification passed for cached component: {}",
+                            key
+                        );
                     }
                     Err(e) => {
-                        warn!("Integrity verification failed for cached component {}: {}", key, e);
+                        warn!(
+                            "Integrity verification failed for cached component {}: {}",
+                            key, e
+                        );
                         // Remove corrupted component from cache
                         self.components.remove(&key);
                         self.remove_from_disk(&key)?;
@@ -88,10 +93,10 @@ impl ComponentCache {
     pub fn store(&mut self, component: &Component) -> Result<()> {
         let uri = ComponentUri::from_str(&component.manifest.name)?;
         let key = uri.cache_key();
-        
+
         // Verify integrity before storing
         self.integrity_verifier.verify(component)?;
-        
+
         let cached_component = CachedComponent {
             component: component.clone(),
             cached_at: chrono::Utc::now(),
@@ -101,7 +106,7 @@ impl ComponentCache {
 
         self.components.insert(key.clone(), cached_component);
         self.save_to_disk(&key, component)?;
-        
+
         info!("Stored component in cache: {}", key);
         Ok(())
     }
@@ -134,11 +139,11 @@ impl ComponentCache {
 
         for cached in self.components.values() {
             total_access_count += cached.access_count;
-            
+
             if oldest_cached.is_none() || cached.cached_at < oldest_cached.unwrap() {
                 oldest_cached = Some(cached.cached_at);
             }
-            
+
             if newest_cached.is_none() || cached.cached_at > newest_cached.unwrap() {
                 newest_cached = Some(cached.cached_at);
             }
@@ -187,24 +192,29 @@ impl ComponentCache {
     /// Get cache size in bytes (approximate)
     pub fn size_bytes(&self) -> u64 {
         let mut total_size = 0;
-        
+
         for cached in self.components.values() {
             // Approximate size calculation
-            total_size += cached.component.manifest.to_yaml().unwrap_or_default().len() as u64;
-            
+            total_size += cached
+                .component
+                .manifest
+                .to_yaml()
+                .unwrap_or_default()
+                .len() as u64;
+
             for template in cached.component.content.templates.values() {
                 total_size += template.len() as u64;
             }
-            
+
             for asset in cached.component.content.assets.values() {
                 total_size += asset.len() as u64;
             }
-            
+
             for hook in cached.component.content.hooks.values() {
                 total_size += hook.len() as u64;
             }
         }
-        
+
         total_size
     }
 
@@ -225,7 +235,7 @@ impl ComponentCache {
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.is_dir() {
                 if let Some(component_name) = path.file_name().and_then(|n| n.to_str()) {
                     match self.load_component_from_disk(component_name) {
@@ -258,17 +268,20 @@ impl ComponentCache {
     }
 
     /// Load a specific component from disk
-    fn load_component_from_disk(&self, component_name: &str) -> Result<Option<(String, Component)>> {
+    fn load_component_from_disk(
+        &self,
+        component_name: &str,
+    ) -> Result<Option<(String, Component)>> {
         let component_dir = self.cache_dir.join(component_name);
         let manifest_path = component_dir.join("manifest.yml");
-        
+
         if !manifest_path.exists() {
             return Ok(None);
         }
 
         let manifest_content = fs::read_to_string(manifest_path)?;
         let manifest = ComponentManifest::from_yaml(&manifest_content)?;
-        
+
         // Load content files would go here...
         // For now, return empty content
         let content = crate::component::ComponentContent {
@@ -293,12 +306,12 @@ impl ComponentCache {
     fn save_to_disk(&self, key: &str, component: &Component) -> Result<()> {
         let component_dir = self.cache_dir.join(key);
         fs::create_dir_all(&component_dir)?;
-        
+
         // Save manifest
         let manifest_path = component_dir.join("manifest.yml");
         let manifest_yaml = component.manifest.to_yaml()?;
         fs::write(manifest_path, manifest_yaml)?;
-        
+
         // Save templates
         let templates_dir = component_dir.join("templates");
         fs::create_dir_all(&templates_dir)?;
@@ -306,7 +319,7 @@ impl ComponentCache {
             let template_path = templates_dir.join(format!("{}.tera", name));
             fs::write(template_path, content)?;
         }
-        
+
         // Save assets
         let assets_dir = component_dir.join("assets");
         fs::create_dir_all(&assets_dir)?;
@@ -314,7 +327,7 @@ impl ComponentCache {
             let asset_path = assets_dir.join(name);
             fs::write(asset_path, content)?;
         }
-        
+
         // Save hooks
         let hooks_dir = component_dir.join("hooks");
         fs::create_dir_all(&hooks_dir)?;
@@ -322,7 +335,7 @@ impl ComponentCache {
             let hook_path = hooks_dir.join(name);
             fs::write(hook_path, content)?;
         }
-        
+
         Ok(())
     }
 
@@ -354,7 +367,7 @@ impl Default for ComponentCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::component::{ComponentManifest, ComponentContent, ComponentInterface};
+    use crate::component::ComponentManifest;
 
     #[test]
     fn test_cache_key_generation() {

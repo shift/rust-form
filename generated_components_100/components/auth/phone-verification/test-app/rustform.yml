@@ -1,0 +1,37 @@
+name: "phone-verification-test-app"
+version: "0.1.0"
+description: "Test application for component Phone number verification via SMS"
+
+components:
+  - name: "phone-verification"
+    path: "../"
+
+models:
+  TestModel:
+    fields:
+      id:
+        type: integer
+        primary: true
+        auto_increment: true
+      name:
+        type: string
+        max_length: 255
+        required: true
+      created_at:
+        type: datetime
+        auto_now_add: true
+
+routes:
+  - path: "/test"
+    method: GET
+    handler: "list_test_models"
+    response:
+      type: "TestModel[]"
+  
+  - path: "/test"
+    method: POST
+    handler: "create_test_model"
+    request:
+      type: "TestModel"
+    response:
+      type: "TestModel"

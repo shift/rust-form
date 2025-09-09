@@ -1,0 +1,4 @@
+# Example 1 for gift-cards
+project_name: example_1
+components:
+  gift-cards: "path:../"

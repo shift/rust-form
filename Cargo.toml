@@ -2,7 +2,8 @@
 members = [
     "rustform-cli",
     "rustform-codegen", 
-    "rustform-core"
+    "rustform-core",
+    "tools"
 ]
 resolver = "2"
 
@@ -61,3 +62,6 @@ rstest = "0.21"
 mockall = "0.12"
 tempfile = "3.10"
 similar-asserts = "1.5"
+assert_cmd = "2.0"
+predicates = "3.1"
+tokio-test = "0.4"

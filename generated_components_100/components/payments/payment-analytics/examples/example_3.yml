@@ -1,0 +1,4 @@
+# Example 3 for payment-analytics
+project_name: example_3
+components:
+  payment-analytics: "path:../"

@@ -8,19 +8,20 @@ impl Day2Operations {
     /// Check for deprecated features and emit warnings
     pub fn check_deprecations(config: &Config) -> Vec<DeprecationWarning> {
         let mut warnings = Vec::new();
-        
+
         // Check schema version for deprecations
         if let Ok((major, minor, _)) = parse_version(&config.schema_version) {
             if major == 0 && minor < 9 {
                 warnings.push(DeprecationWarning {
                     feature: "Schema version < 0.9.0".to_string(),
-                    message: "This schema version is deprecated and will be removed in v2.0.0".to_string(),
+                    message: "This schema version is deprecated and will be removed in v2.0.0"
+                        .to_string(),
                     suggestion: "Update schema_version to 1.0.0 or newer".to_string(),
                     removal_version: Some("2.0.0".to_string()),
                 });
             }
         }
-        
+
         // Check for deprecated middleware configurations
         for middleware in &config.middleware {
             match middleware {
@@ -29,7 +30,8 @@ impl Day2Operations {
                         warnings.push(DeprecationWarning {
                             feature: "helmet middleware option".to_string(),
                             message: "The 'helmet' option is deprecated".to_string(),
-                            suggestion: "Use individual security headers configuration instead".to_string(),
+                            suggestion: "Use individual security headers configuration instead"
+                                .to_string(),
                             removal_version: Some("0.2.0".to_string()),
                         });
                     }
@@ -37,17 +39,20 @@ impl Day2Operations {
                 _ => {}
             }
         }
-        
+
         warnings
     }
-    
+
     /// Generate migration guide from old to new schema version
-    pub fn generate_migration_guide(from_version: &str, to_version: &str) -> ValidationResult<MigrationGuide> {
-        let (from_major, from_minor, _) = parse_version(from_version)?;
-        let (to_major, to_minor, _) = parse_version(to_version)?;
-        
+    pub fn generate_migration_guide(
+        from_version: &str,
+        to_version: &str,
+    ) -> ValidationResult<MigrationGuide> {
+        let (from_major, _from_minor, _) = parse_version(from_version)?;
+        let (to_major, _to_minor, _) = parse_version(to_version)?;
+
         let mut steps = Vec::new();
-        
+
         // Migration from 0.x to 1.0
         if from_major == 0 && to_major == 1 {
             steps.push(MigrationStep {
@@ -62,29 +67,27 @@ impl Day2Operations {
                         new_value: Some("schema_version: \"1.0.0\"".to_string()),
                     },
                     YamlChange {
-                        path: "root".to_string(), 
+                        path: "root".to_string(),
                         action: ChangeAction::Add,
                         old_value: None,
                         new_value: Some("api_version: \"0.1.0\"".to_string()),
                     },
                 ],
             });
-            
+
             steps.push(MigrationStep {
                 description: "Update middleware security configuration".to_string(),
                 automated: false,
                 required: false,
-                yaml_changes: vec![
-                    YamlChange {
-                        path: "middleware.security.helmet".to_string(),
-                        action: ChangeAction::Replace,
-                        old_value: Some("helmet: true".to_string()),
-                        new_value: Some("x_frame_options: \"DENY\"".to_string()),
-                    },
-                ],
+                yaml_changes: vec![YamlChange {
+                    path: "middleware.security.helmet".to_string(),
+                    action: ChangeAction::Replace,
+                    old_value: Some("helmet: true".to_string()),
+                    new_value: Some("x_frame_options: \"DENY\"".to_string()),
+                }],
             });
         }
-        
+
         Ok(MigrationGuide {
             from_version: from_version.to_string(),
             to_version: to_version.to_string(),
@@ -92,12 +95,12 @@ impl Day2Operations {
             steps,
         })
     }
-    
+
     /// Check compatibility matrix for components and features
     pub fn check_compatibility_matrix(config: &Config) -> CompatibilityReport {
         let mut issues = Vec::new();
         let mut warnings = Vec::new();
-        
+
         // Check API version compatibility
         if let Err(e) = validate_api_compatibility(&config.api_version) {
             issues.push(CompatibilityIssue {
@@ -107,7 +110,7 @@ impl Day2Operations {
                 resolution: "Update api_version in configuration or upgrade rust-form".to_string(),
             });
         }
-        
+
         // Check feature flag compatibility
         #[cfg(feature = "registry")]
         if config.registry.is_some() {
@@ -118,7 +121,7 @@ impl Day2Operations {
                 resolution: "Use with caution in production environments".to_string(),
             });
         }
-        
+
         // Check component compatibility if components are defined
         if let Some(components) = &config.components {
             for (name, version) in components {
@@ -132,7 +135,7 @@ impl Day2Operations {
                 }
             }
         }
-        
+
         CompatibilityReport {
             rust_form_version: "0.1.0".to_string(),
             config_api_version: config.api_version.clone(),
@@ -217,26 +220,32 @@ fn parse_version(version: &str) -> Result<(u32, u32, u32), ValidationError> {
             version: version.to_string(),
         });
     }
-    
-    let major = parts[0].parse::<u32>().map_err(|_| ValidationError::InvalidVersion {
-        version: version.to_string(),
-    })?;
-    let minor = parts[1].parse::<u32>().map_err(|_| ValidationError::InvalidVersion {
-        version: version.to_string(),
-    })?;
-    let patch = parts[2].parse::<u32>().map_err(|_| ValidationError::InvalidVersion {
-        version: version.to_string(),
-    })?;
-    
+
+    let major = parts[0]
+        .parse::<u32>()
+        .map_err(|_| ValidationError::InvalidVersion {
+            version: version.to_string(),
+        })?;
+    let minor = parts[1]
+        .parse::<u32>()
+        .map_err(|_| ValidationError::InvalidVersion {
+            version: version.to_string(),
+        })?;
+    let patch = parts[2]
+        .parse::<u32>()
+        .map_err(|_| ValidationError::InvalidVersion {
+            version: version.to_string(),
+        })?;
+
     Ok((major, minor, patch))
 }
 
 fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
     const CURRENT_RUSTFORM_VERSION: &str = "0.1.0";
-    
+
     let (api_major, api_minor, _) = parse_version(api_version)?;
     let (current_major, current_minor, _) = parse_version(CURRENT_RUSTFORM_VERSION)?;
-    
+
     if api_major > current_major {
         return Err(ValidationError::IncompatibleApiVersion {
             requested: api_version.to_string(),
@@ -244,7 +253,7 @@ fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
             reason: "Major version too new".to_string(),
         });
     }
-    
+
     if api_major < current_major {
         return Err(ValidationError::IncompatibleApiVersion {
             requested: api_version.to_string(),
@@ -252,7 +261,7 @@ fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
             reason: "Major version too old".to_string(),
         });
     }
-    
+
     if api_minor > current_minor {
         return Err(ValidationError::IncompatibleApiVersion {
             requested: api_version.to_string(),
@@ -260,6 +269,6 @@ fn validate_api_compatibility(api_version: &str) -> ValidationResult<()> {
             reason: "Minor version too new".to_string(),
         });
     }
-    
+
     Ok(())
 }

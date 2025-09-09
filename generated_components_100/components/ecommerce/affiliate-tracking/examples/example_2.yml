@@ -1,0 +1,4 @@
+# Example 2 for affiliate-tracking
+project_name: example_2
+components:
+  affiliate-tracking: "path:../"

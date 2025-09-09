@@ -11,3 +11,6 @@ pub struct GeneratedProject {
     pub name: String,
     pub files: Vec<GeneratedFile>,
 }
+
+#[cfg(test)]
+mod tests;

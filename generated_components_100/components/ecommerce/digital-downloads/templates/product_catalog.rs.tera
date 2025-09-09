@@ -1,0 +1,51 @@
+use axum::{extract::{Path, Query}, response::Json};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+use std::collections::HashMap;
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Product {
+    pub id: Uuid,
+    pub name: String,
+    pub description: String,
+    pub price: f64,
+    pub category: String,
+    pub in_stock: bool,
+    pub images: Vec<String>,
+    pub attributes: HashMap<String, String>,
+}
+
+#[derive(Deserialize)]
+pub struct ProductQuery {
+    pub category: Option<String>,
+    pub min_price: Option<f64>,
+    pub max_price: Option<f64>,
+    pub in_stock: Option<bool>,
+    pub page: Option<usize>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize)]
+pub struct ProductCatalogResponse {
+    pub products: Vec<Product>,
+    pub total: usize,
+    pub page: usize,
+    pub per_page: usize,
+}
+
+pub async fn get_products(Query(params): Query<ProductQuery>) -> Json<ProductCatalogResponse> {
+    // Implementation for fetching products
+    let products = Vec::new(); // Placeholder
+    
+    Json(ProductCatalogResponse {
+        products,
+        total: 0,
+        page: params.page.unwrap_or(1),
+        per_page: params.limit.unwrap_or(20),
+    })
+}
+
+pub async fn get_product(Path(id): Path<Uuid>) -> Json<Option<Product>> {
+    // Implementation for fetching single product
+    Json(None) // Placeholder
+}

@@ -1,0 +1,4 @@
+# Example 1 for price-tracker
+project_name: example_1
+components:
+  price-tracker: "path:../"

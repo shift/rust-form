@@ -1,0 +1,4 @@
+# Example 2 for sso-provider
+project_name: example_2
+components:
+  sso-provider: "path:../"

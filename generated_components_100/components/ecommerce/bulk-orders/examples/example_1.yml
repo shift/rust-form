@@ -1,0 +1,4 @@
+# Example 1 for bulk-orders
+project_name: example_1
+components:
+  bulk-orders: "path:../"

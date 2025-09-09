@@ -1,0 +1,4 @@
+# Example 2 for stripe-integration
+project_name: example_2
+components:
+  stripe-integration: "path:../"

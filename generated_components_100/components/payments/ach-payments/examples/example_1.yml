@@ -1,0 +1,4 @@
+# Example 1 for ach-payments
+project_name: example_1
+components:
+  ach-payments: "path:../"

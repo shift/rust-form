@@ -1,0 +1,4 @@
+# Example 1 for file-manager
+project_name: example_1
+components:
+  file-manager: "path:../"

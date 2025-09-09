@@ -1,0 +1,4 @@
+# Example 1 for abandoned-cart
+project_name: example_1
+components:
+  abandoned-cart: "path:../"

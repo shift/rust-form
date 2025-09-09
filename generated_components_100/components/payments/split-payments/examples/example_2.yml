@@ -1,0 +1,4 @@
+# Example 2 for split-payments
+project_name: example_2
+components:
+  split-payments: "path:../"

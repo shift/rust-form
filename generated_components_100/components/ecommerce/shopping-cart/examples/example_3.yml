@@ -1,0 +1,4 @@
+# Example 3 for shopping-cart
+project_name: example_3
+components:
+  shopping-cart: "path:../"

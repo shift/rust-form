@@ -1,0 +1,4 @@
+# Example 3 for fraud-detection
+project_name: example_3
+components:
+  fraud-detection: "path:../"

@@ -1,0 +1,4 @@
+# Example 1 for currency-converter
+project_name: example_1
+components:
+  currency-converter: "path:../"

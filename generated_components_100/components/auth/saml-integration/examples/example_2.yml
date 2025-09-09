@@ -1,0 +1,4 @@
+# Example 2 for saml-integration
+project_name: example_2
+components:
+  saml-integration: "path:../"

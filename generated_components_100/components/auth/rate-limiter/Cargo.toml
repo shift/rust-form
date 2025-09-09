@@ -1,0 +1,14 @@
+[package]
+name = "rate-limiter"
+version = "1.0.0"
+edition = "2021"
+
+[workspace]
+
+[lib]
+name = "rate_limiter"
+path = "src/lib_test.rs"
+
+[dependencies]
+jsonwebtoken = "8.3"
+chrono = { version = "0.4", features = ["serde"] }

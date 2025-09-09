@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard Demo - RustForm Components</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f1f3f4;
+        }
+        .header { 
+            background: #1a73e8; 
+            color: white; 
+            padding: 1rem 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .sidebar { 
+            position: fixed; 
+            left: 0; 
+            top: 64px; 
+            width: 250px; 
+            height: calc(100vh - 64px); 
+            background: white; 
+            border-right: 1px solid #e1e5e9; 
+            padding: 1rem 0; 
+        }
+        .sidebar ul { 
+            list-style: none; 
+        }
+        .sidebar li { 
+            padding: 0.75rem 1.5rem; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+        }
+        .sidebar li:hover, .sidebar li.active { 
+            background: #f1f3f4; 
+        }
+        .main-content { 
+            margin-left: 250px; 
+            padding: 2rem; 
+        }
+        .dashboard-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 1.5rem; 
+            margin-bottom: 2rem; 
+        }
+        .dashboard-card { 
+            background: white; 
+            border-radius: 8px; 
+            padding: 1.5rem; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .stat-card { 
+            background: linear-gradient(135deg, #667eea, #764ba2); 
+            color: white; 
+            border-radius: 8px; 
+            padding: 1.5rem; 
+            text-align: center; 
+        }
+        .stat-number { 
+            font-size: 2.5rem; 
+            font-weight: bold; 
+            margin-bottom: 0.5rem; 
+        }
+        .demo-button { 
+            background: #1a73e8; 
+            color: white; 
+            border: none; 
+            padding: 0.5rem 1rem; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 0.25rem; 
+        }
+        .demo-button:hover { 
+            background: #1557b0; 
+        }
+        .demo-button.success { 
+            background: #34a853; 
+        }
+        .demo-button.warning { 
+            background: #fbbc04; 
+            color: #333; 
+        }
+        .demo-button.danger { 
+            background: #ea4335; 
+        }
+        .hidden { 
+            display: none; 
+        }
+        .table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 1rem 0; 
+        }
+        .table th, .table td { 
+            padding: 0.75rem; 
+            text-align: left; 
+            border-bottom: 1px solid #e1e5e9; 
+        }
+        .table th { 
+            background: #f8f9fa; 
+            font-weight: 600; 
+        }
+        .chart-placeholder { 
+            height: 200px; 
+            background: linear-gradient(45deg, #f1f3f4, #e8eaed); 
+            border-radius: 4px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #5f6368; 
+            font-size: 1.1rem; 
+        }
+        .notification { 
+            background: #e8f0fe; 
+            color: #1a73e8; 
+            padding: 1rem; 
+            border-radius: 4px; 
+            margin: 1rem 0; 
+            border-left: 4px solid #1a73e8; 
+        }
+        .notification.success { 
+            background: #e6f4ea; 
+            color: #137333; 
+            border-left-color: #34a853; 
+        }
+        .notification.warning { 
+            background: #fef7e0; 
+            color: #b06000; 
+            border-left-color: #fbbc04; 
+        }
+        .notification.error { 
+            background: #fce8e6; 
+            color: #d93025; 
+            border-left-color: #ea4335; 
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>📊 RustForm Admin Dashboard</h1>
+        <div>
+            <span>Welcome, Admin</span>
+            <button class="demo-button" onclick="demoLogout()">Logout</button>
+        </div>
+    </header>
+
+    <nav class="sidebar">
+        <ul>
+            <li class="active" onclick="showSection('overview')">📊 Overview</li>
+            <li onclick="showSection('analytics')">📈 Analytics</li>
+            <li onclick="showSection('users')">👥 User Management</li>
+            <li onclick="showSection('orders')">📦 Orders</li>
+            <li onclick="showSection('payments')">💳 Payments</li>
+            <li onclick="showSection('content')">📝 Content</li>
+            <li onclick="showSection('system')">⚙️ System</li>
+            <li onclick="showSection('monitoring')">🔍 Monitoring</li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <!-- Overview Section -->
+        <div id="overview-section">
+            <h2>📊 Dashboard Overview</h2>
+            <p>Real-time analytics and system overview using <strong>analytics-dashboard</strong> and <strong>admin-panel</strong> components.</p>
+            
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <div class="stat-number">1,247</div>
+                    <div>Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">$89,432</div>
+                    <div>Revenue (MTD)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">543</div>
+                    <div>Active Orders</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">98.7%</div>
+                    <div>System Uptime</div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3>📈 Sales Analytics</h3>
+                    <div class="chart-placeholder">📊 Sales Chart (Last 30 Days)</div>
+                    <button class="demo-button" onclick="demoRefreshAnalytics()">Refresh Data</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <h3>🚨 System Alerts</h3>
+                    <div>
+                        <div style="color: #ea4335; margin: 0.5rem 0;">⚠️ High CPU usage detected</div>
+                        <div style="color: #fbbc04; margin: 0.5rem 0;">⚠️ Low disk space on server-02</div>
+                        <div style="color: #34a853; margin: 0.5rem 0;">✅ All payment gateways operational</div>
+                    </div>
+                    <button class="demo-button warning" onclick="demoViewAlerts()">View All Alerts</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Section -->
+        <div id="analytics-section" class="hidden">
+            <h2>📈 Analytics Dashboard</h2>
+            <p>Demonstrates: <strong>analytics-dashboard</strong>, <strong>monitoring-dashboard</strong> components</p>
+            
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3>📊 Traffic Analytics</h3>
+                    <div class="chart-placeholder">📈 Visitor Traffic Chart</div>
+                    <button class="demo-button" onclick="demoTrafficData()">Export Data</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <h3>💰 Revenue Analytics</h3>
+                    <div class="chart-placeholder">💹 Revenue Trends</div>
+                    <button class="demo-button" onclick="demoRevenueReport()">Generate Report</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <h3>🌍 Geographic Data</h3>
+                    <div class="chart-placeholder">🗺️ User Geographic Distribution</div>
+                    <button class="demo-button" onclick="demoGeoData()">View Details</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Section -->
+        <div id="users-section" class="hidden">
+            <h2>👥 User Management</h2>
+            <p>Demonstrates: <strong>rbac-engine</strong>, <strong>audit-logger</strong> components</p>
+            
+            <div class="dashboard-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3>Users</h3>
+                    <button class="demo-button success" onclick="demoAddUser()">Add User</button>
+                </div>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>John Doe</td>
+                            <td>john@example.com</td>
+                            <td>Admin</td>
+                            <td>Active</td>
+                            <td>
+                                <button class="demo-button" onclick="demoEditUser('john')">Edit</button>
+                                <button class="demo-button danger" onclick="demoSuspendUser('john')">Suspend</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Jane Smith</td>
+                            <td>jane@example.com</td>
+                            <td>Customer</td>
+                            <td>Active</td>
+                            <td>
+                                <button class="demo-button" onclick="demoEditUser('jane')">Edit</button>
+                                <button class="demo-button danger" onclick="demoSuspendUser('jane')">Suspend</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Orders Section -->
+        <div id="orders-section" class="hidden">
+            <h2>📦 Order Management</h2>
+            <p>Demonstrates: <strong>order-management</strong>, <strong>inventory-tracker</strong> components</p>
+            
+            <div class="dashboard-card">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>#ORD-001</td>
+                            <td>John Doe</td>
+                            <td>$299.99</td>
+                            <td>Processing</td>
+                            <td>
+                                <button class="demo-button" onclick="demoUpdateOrder('001', 'shipped')">Ship</button>
+                                <button class="demo-button warning" onclick="demoRefundOrder('001')">Refund</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>#ORD-002</td>
+                            <td>Jane Smith</td>
+                            <td>$149.99</td>
+                            <td>Shipped</td>
+                            <td>
+                                <button class="demo-button" onclick="demoTrackOrder('002')">Track</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- System Section -->
+        <div id="system-section" class="hidden">
+            <h2>⚙️ System Configuration</h2>
+            <p>Demonstrates: <strong>monitoring-dashboard</strong>, system management components</p>
+            
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3>🖥️ Server Status</h3>
+                    <div>
+                        <div>CPU Usage: <strong>45%</strong></div>
+                        <div>Memory: <strong>2.1GB / 8GB</strong></div>
+                        <div>Disk: <strong>125GB / 500GB</strong></div>
+                        <div>Uptime: <strong>14 days, 3 hours</strong></div>
+                    </div>
+                    <button class="demo-button" onclick="demoRestartServer()">Restart Server</button>
+                </div>
+                
+                <div class="dashboard-card">
+                    <h3>🔧 Configuration</h3>
+                    <button class="demo-button" onclick="demoConfig('payment')">Payment Settings</button>
+                    <button class="demo-button" onclick="demoConfig('email')">Email Settings</button>
+                    <button class="demo-button" onclick="demoConfig('security')">Security Settings</button>
+                    <button class="demo-button" onclick="demoConfig('backup')">Backup Settings</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function showSection(sectionName) {
+            document.querySelectorAll('[id$="-section"]').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.querySelectorAll('.sidebar li').forEach(li => {
+                li.classList.remove('active');
+            });
+            document.getElementById(sectionName + '-section').classList.remove('hidden');
+            event.target.classList.add('active');
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.querySelector('.main-content').insertBefore(notification, document.querySelector('.main-content').firstChild);
+            setTimeout(() => notification.remove(), 4000);
+        }
+
+        function demoLogout() {
+            showNotification('👋 Logout successful. Redirecting to login page...', 'info');
+        }
+
+        function demoRefreshAnalytics() {
+            showNotification('📊 Analytics data refreshed with latest metrics', 'success');
+        }
+
+        function demoViewAlerts() {
+            showNotification('🚨 Viewing all system alerts and notifications', 'warning');
+        }
+
+        function demoTrafficData() {
+            showNotification('📊 Traffic data exported to CSV file', 'success');
+        }
+
+        function demoRevenueReport() {
+            showNotification('💰 Revenue report generated for last 30 days', 'success');
+        }
+
+        function demoGeoData() {
+            showNotification('🌍 Top countries: USA (40%), UK (15%), Canada (10%)', 'info');
+        }
+
+        function demoAddUser() {
+            showNotification('👤 New user creation form opened', 'info');
+        }
+
+        function demoEditUser(name) {
+            showNotification(`✏️ Editing user profile for ${name}`, 'info');
+        }
+
+        function demoSuspendUser(name) {
+            showNotification(`⚠️ User ${name} has been suspended`, 'warning');
+        }
+
+        function demoUpdateOrder(id, status) {
+            showNotification(`📦 Order ${id} status updated to: ${status}`, 'success');
+        }
+
+        function demoRefundOrder(id) {
+            showNotification(`💸 Refund initiated for order ${id}`, 'warning');
+        }
+
+        function demoTrackOrder(id) {
+            showNotification(`🚚 Order ${id} tracking: In transit, estimated delivery tomorrow`, 'info');
+        }
+
+        function demoRestartServer() {
+            showNotification('🔄 Server restart initiated. Downtime: ~30 seconds', 'warning');
+        }
+
+        function demoConfig(type) {
+            showNotification(`⚙️ ${type.charAt(0).toUpperCase() + type.slice(1)} configuration panel opened`, 'info');
+        }
+    </script>
+</body>
+</html>

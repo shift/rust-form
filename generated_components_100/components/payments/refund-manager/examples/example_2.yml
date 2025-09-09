@@ -1,0 +1,4 @@
+# Example 2 for refund-manager
+project_name: example_2
+components:
+  refund-manager: "path:../"

@@ -1,0 +1,4 @@
+# Example 1 for sitemap-generator
+project_name: example_1
+components:
+  sitemap-generator: "path:../"

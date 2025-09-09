@@ -1,0 +1,4 @@
+# Example 2 for multi-factor-auth
+project_name: example_2
+components:
+  multi-factor-auth: "path:../"

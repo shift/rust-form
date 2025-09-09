@@ -1,0 +1,4 @@
+# Example 1 for product-catalog
+project_name: example_1
+components:
+  product-catalog: "path:../"
