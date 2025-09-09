@@ -420,25 +420,108 @@ impl ComponentFetcher {
         }
     }
 
-    /// List available versions for a component (registry only for now)
+    /// List available versions for a component
     pub async fn list_versions(&self, uri: &ComponentUri) -> Result<Vec<String>> {
-        if !matches!(uri.scheme, UriScheme::Registry) {
-            return Err(Error::ComponentError(
-                "Version listing only supported for registry components".to_string(),
-            ));
+        debug!("Listing versions for: {}", uri);
+
+        match &uri.scheme {
+            UriScheme::Registry => {
+                let registry_url = std::env::var("RUSTFORM_REGISTRY_URL")
+                    .unwrap_or_else(|_| "https://registry.rust-form.dev".to_string());
+
+                let url = format!("{}/v1/components/{}/versions", registry_url, uri.path);
+                
+                let response = self.client
+                    .get(&url)
+                    .header("User-Agent", "rustform")
+                    .send()
+                    .await
+                    .map_err(|e| Error::Network(format!("Failed to fetch versions: {}", e)))?;
+
+                if !response.status().is_success() {
+                    return Err(Error::Network(format!("Registry returned status: {}", response.status())));
+                }
+
+                let versions: Vec<String> = response.json().await
+                    .map_err(|e| Error::Parse(format!("Failed to parse version list: {}", e)))?;
+
+                Ok(versions)
+            }
+            UriScheme::GitHub => {
+                self.list_github_versions(uri).await
+            }
+            UriScheme::GitLab => {
+                self.list_gitlab_versions(uri).await
+            }
+            UriScheme::Git => {
+                self.list_git_versions(uri).await
+            }
+            UriScheme::Path | UriScheme::File => {
+                // Local components have only one version
+                Ok(vec!["local".to_string()])
+            }
+        }
+    }
+
+    async fn list_github_versions(&self, uri: &ComponentUri) -> Result<Vec<String>> {
+        let url = format!("https://api.github.com/repos/{}/tags", uri.path);
+        
+        let response = self.client
+            .get(&url)
+            .header("User-Agent", "rustform")
+            .send()
+            .await
+            .map_err(|e| Error::Network(format!("Failed to fetch GitHub tags: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(Error::Network(format!("GitHub API returned status: {}", response.status())));
         }
 
-        let registry_url = std::env::var("RUSTFORM_REGISTRY_URL")
-            .unwrap_or_else(|_| "https://registry.rust-form.dev".to_string());
+        let tags: Vec<serde_json::Value> = response.json().await
+            .map_err(|e| Error::Parse(format!("Failed to parse GitHub tags: {}", e)))?;
 
-        let _url = format!("{}/v1/components/{}/versions", registry_url, uri.path);
+        let versions: Vec<String> = tags
+            .into_iter()
+            .filter_map(|tag| tag["name"].as_str().map(|s| s.to_string()))
+            .filter(|name| name.starts_with('v') || name.chars().next().unwrap_or('a').is_ascii_digit())
+            .collect();
 
-        // For now, return mock versions
-        Ok(vec![
-            "1.0.0".to_string(),
-            "1.1.0".to_string(),
-            "2.0.0".to_string(),
-        ])
+        Ok(versions)
+    }
+
+    async fn list_gitlab_versions(&self, uri: &ComponentUri) -> Result<Vec<String>> {
+        let encoded_path = urlencoding::encode(&uri.path);
+        let url = format!("https://gitlab.com/api/v4/projects/{}/repository/tags", encoded_path);
+        
+        let response = self.client
+            .get(&url)
+            .header("User-Agent", "rustform")
+            .send()
+            .await
+            .map_err(|e| Error::Network(format!("Failed to fetch GitLab tags: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(Error::Network(format!("GitLab API returned status: {}", response.status())));
+        }
+
+        let tags: Vec<serde_json::Value> = response.json().await
+            .map_err(|e| Error::Parse(format!("Failed to parse GitLab tags: {}", e)))?;
+
+        let versions: Vec<String> = tags
+            .into_iter()
+            .filter_map(|tag| tag["name"].as_str().map(|s| s.to_string()))
+            .filter(|name| name.starts_with('v') || name.chars().next().unwrap_or('a').is_ascii_digit())
+            .collect();
+
+        Ok(versions)
+    }
+
+    async fn list_git_versions(&self, uri: &ComponentUri) -> Result<Vec<String>> {
+        // For generic git repositories, we'd need to clone and list tags
+        // This is more complex and would require git command execution
+        // For now, return a placeholder
+        warn!("Git version listing not fully implemented for: {}", uri);
+        Ok(vec!["main".to_string(), "latest".to_string()])
     }
 }
 

@@ -4,6 +4,8 @@ use axum::{
 };
 use sqlx::SqlitePool;
 use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tower::ServiceBuilder;
 use tower_http::{
     trace::TraceLayer,
@@ -15,15 +17,21 @@ mod handlers;
 mod database;
 mod error;
 mod component_handlers;
+mod studio_handlers;
+mod component_registry;
+mod component_extensions;
 
 pub use database::*;
 pub use error::*;
 use handlers::*;
 use component_handlers::*;
+use studio_handlers::*;
+use component_registry::ComponentRegistry;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub db: SqlitePool,
+    pub pool: SqlitePool,
+    pub component_registry: Arc<Mutex<ComponentRegistry>>,
 }
 
 #[tokio::main]
@@ -48,8 +56,23 @@ async fn main() -> anyhow::Result<()> {
     // Run migrations
     run_migrations(&pool).await?;
 
+    // Initialize component registry
+    let mut component_registry = ComponentRegistry::new();
+    
+    // Try to load from cache, if fails, discover components
+    if let Err(_) = component_registry.load_cache() {
+        tracing::info!("No component cache found, performing initial discovery...");
+        component_registry.discover_components().await?;
+        component_registry.save_cache()?;
+    }
+    
+    tracing::info!("Component registry initialized with {} components", component_registry.components.len());
+
     // Create application state
-    let state = AppState { db: pool };
+    let state = AppState { 
+        pool,
+        component_registry: Arc::new(Mutex::new(component_registry)),
+    };
 
     // Build our application with routes
     let app = create_router(state);
@@ -79,6 +102,14 @@ fn create_router(state: AppState) -> Router {
         .route("/components/:id", get(get_component_by_id))
         .route("/components/:id", put(update_component))
         .route("/components/:id", delete(delete_component))
+        
+        // Studio API routes
+        .route("/api/studio/components/search", get(search_components))
+        .route("/api/studio/components/:name", get(get_component_details))
+        .route("/api/studio/components/refresh", post(refresh_components))
+        .route("/api/studio/config/validate", post(validate_config))
+        .route("/api/studio/projects/generate", post(generate_project))
+        
         
         // Component generation routes
         .route("/components/generate", post(generate_component))

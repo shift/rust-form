@@ -168,26 +168,41 @@ impl DependencyResolver {
         version_req: &VersionReq,
     ) -> Result<Version> {
         // In a real implementation, this would:
-        // 1. Fetch available versions from the component source
-        // 2. Find the best matching version that satisfies the constraint
-        // 3. Consider pre-release preferences, etc.
-
-        // For now, return a mock version that satisfies basic constraints
-        let req_string = version_req.to_string();
-        if req_string.starts_with('^') {
-            // Handle caret requirements like "^1.2.3"
-            let version_str = req_string.trim_start_matches('^');
-            Version::parse(version_str).map_err(|e| {
-                Error::ValidationError(format!("Could not parse version from constraint: {}", e))
-            })
-        } else if req_string.starts_with('~') {
-            // Handle tilde requirements like "~1.2.3"
-            let version_str = req_string.trim_start_matches('~');
-            Version::parse(version_str).map_err(|e| {
-                Error::ValidationError(format!("Could not parse version from constraint: {}", e))
-            })
-        } else {
-            // Try to parse as exact version
+        // Fetch available versions from the component source
+        let fetcher = crate::component::ComponentFetcher::new();
+        let available_versions = fetcher.list_versions(uri).await?;
+        
+        // Parse and sort versions
+        let mut versions: Vec<Version> = available_versions
+            .iter()
+            .filter_map(|v| Version::parse(v).ok())
+            .collect();
+        
+        // Sort in descending order (newest first)
+        versions.sort_by(|a, b| b.cmp(a));
+        
+        // Find the best matching version that satisfies the constraint
+        for version in versions {
+            if version_req.matches(&version) {
+                return Ok(version);
+            }
+        }
+        
+        // If no version matches, try to provide a fallback
+        // This handles cases where the constraint is too strict
+        if versions.is_empty() {
+            return Err(Error::ComponentError(format!(
+                "No versions available for component: {}", uri
+            )));
+        }
+        
+        // If we have versions but none match, return the latest
+        tracing::warn!(
+            "No version satisfies constraint '{}' for component '{}', using latest: {}",
+            version_req, uri, versions[0]
+        );
+        
+        Ok(versions[0].clone())
             Version::parse(&req_string).map_err(|e| {
                 Error::ValidationError(format!(
                     "Could not resolve version constraint '{}': {}",

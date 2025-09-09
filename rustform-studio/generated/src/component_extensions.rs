@@ -154,64 +154,219 @@ impl Component {
     }
 
     async fn fetch_github_manifest(&self, uri: &str) -> Result<ComponentManifest, Box<dyn Error>> {
-        // In a real implementation, this would:
-        // 1. Parse the GitHub URI to get owner/repo/version
-        // 2. Make HTTP request to GitHub API
-        // 3. Download the rustform-component.yml file
-        // 4. Parse and validate the manifest
+        let path = uri.strip_prefix("github:").ok_or("Invalid github URI")?;
+        let (repo_path, version) = if path.contains('@') {
+            let parts: Vec<&str> = path.split('@').collect();
+            (parts[0], Some(parts[1]))
+        } else {
+            (path, None)
+        };
 
-        // For demonstration, return a mock manifest
-        Ok(ComponentManifest {
-            name: self.name.clone(),
-            version: self.version.clone().unwrap_or_else(|| "latest".to_string()),
-            description: self.description.clone(),
-            author: self.author.clone(),
-            dependencies: HashMap::new(),
-            templates: vec!["button.tera".to_string(), "card.tera".to_string()],
-            integrity: Some("sha256-abc123...".to_string()),
-        })
+        // Build GitHub API URL for manifest file
+        let manifest_url = format!(
+            "https://api.github.com/repos/{}/contents/rustform-component.yml{}",
+            repo_path,
+            version.map(|v| format!("?ref={}", v)).unwrap_or_default()
+        );
+
+        // Make HTTP request to GitHub API
+        let client = reqwest::Client::new();
+        let response = client
+            .get(&manifest_url)
+            .header("User-Agent", "rustform-studio")
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(Box::new(ComponentError {
+                message: format!("Failed to fetch manifest from GitHub: {}", response.status()),
+                component: self.name.clone(),
+            }));
+        }
+
+        let github_response: serde_json::Value = response.json().await?;
+        
+        // GitHub returns base64 encoded content
+        let content = github_response["content"]
+            .as_str()
+            .ok_or("No content in GitHub response")?;
+        
+        let decoded = base64::decode(content.replace('\n', ""))?;
+        let manifest_yaml = String::from_utf8(decoded)?;
+        
+        // Parse the manifest
+        let manifest: ComponentManifest = serde_yaml::from_str(&manifest_yaml)?;
+        
+        tracing::info!("Fetched manifest from GitHub: {}/{}", repo_path, manifest.name);
+        Ok(manifest)
     }
 
-    async fn fetch_gitlab_manifest(&self, _uri: &str) -> Result<ComponentManifest, Box<dyn Error>> {
-        // Similar to GitHub but for GitLab API
-        Ok(ComponentManifest {
-            name: self.name.clone(),
-            version: self.version.clone().unwrap_or_else(|| "latest".to_string()),
-            description: self.description.clone(),
-            author: self.author.clone(),
-            dependencies: HashMap::new(),
-            templates: vec!["form.tera".to_string()],
-            integrity: Some("sha256-def456...".to_string()),
-        })
+    async fn fetch_gitlab_manifest(&self, uri: &str) -> Result<ComponentManifest, Box<dyn Error>> {
+        let path = uri.strip_prefix("gitlab:").ok_or("Invalid gitlab URI")?;
+        let (repo_path, version) = if path.contains('@') {
+            let parts: Vec<&str> = path.split('@').collect();
+            (parts[0], Some(parts[1]))
+        } else {
+            (path, None)
+        };
+
+        // Build GitLab API URL for manifest file
+        let encoded_path = urlencoding::encode(repo_path);
+        let manifest_url = format!(
+            "https://gitlab.com/api/v4/projects/{}/repository/files/rustform-component.yml/raw{}",
+            encoded_path,
+            version.map(|v| format!("?ref={}", v)).unwrap_or_default()
+        );
+
+        // Make HTTP request to GitLab API
+        let client = reqwest::Client::new();
+        let response = client
+            .get(&manifest_url)
+            .header("User-Agent", "rustform-studio")
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(Box::new(ComponentError {
+                message: format!("Failed to fetch manifest from GitLab: {}", response.status()),
+                component: self.name.clone(),
+            }));
+        }
+
+        let manifest_yaml = response.text().await?;
+        
+        // Parse the manifest
+        let manifest: ComponentManifest = serde_yaml::from_str(&manifest_yaml)?;
+        
+        tracing::info!("Fetched manifest from GitLab: {}/{}", repo_path, manifest.name);
+        Ok(manifest)
     }
 
     async fn fetch_local_manifest(&self, uri: &str) -> Result<ComponentManifest, Box<dyn Error>> {
         let path = uri.strip_prefix("path:").unwrap();
+        let manifest_path = std::path::Path::new(path).join("rustform-component.yml");
         
-        // In a real implementation, this would read the local file
-        // For now, return a mock manifest
+        // Try alternative names if main file doesn't exist
+        let manifest_path = if manifest_path.exists() {
+            manifest_path
+        } else {
+            let alt_path = std::path::Path::new(path).join("component.yml");
+            if alt_path.exists() {
+                alt_path
+            } else {
+                // Try to infer from Cargo.toml
+                let cargo_path = std::path::Path::new(path).join("Cargo.toml");
+                if cargo_path.exists() {
+                    return self.infer_manifest_from_cargo(&cargo_path).await;
+                } else {
+                    return Err(Box::new(ComponentError {
+                        message: "No component manifest found (rustform-component.yml, component.yml, or Cargo.toml)".to_string(),
+                        component: self.name.clone(),
+                    }));
+                }
+            }
+        };
+
+        let manifest_content = std::fs::read_to_string(&manifest_path)?;
+        let manifest: ComponentManifest = serde_yaml::from_str(&manifest_content)?;
+        
+        tracing::info!("Loaded local manifest: {}", manifest_path.display());
+        Ok(manifest)
+    }
+
+    async fn infer_manifest_from_cargo(&self, cargo_path: &std::path::Path) -> Result<ComponentManifest, Box<dyn Error>> {
+        let content = std::fs::read_to_string(cargo_path)?;
+        let cargo_toml: toml::Value = toml::from_str(&content)?;
+
+        let package = cargo_toml.get("package").ok_or("No package section in Cargo.toml")?;
+        
+        let name = package.get("name").and_then(|v| v.as_str()).unwrap_or(&self.name);
+        let version = package.get("version").and_then(|v| v.as_str()).unwrap_or("0.1.0");
+        let description = package.get("description").and_then(|v| v.as_str());
+        let authors = package.get("authors").and_then(|v| v.as_array());
+
+        let author = authors
+            .and_then(|a| a.first())
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        // Discover templates in the directory
+        let component_dir = cargo_path.parent().unwrap();
+        let templates = self.discover_local_templates(component_dir)?;
+
         Ok(ComponentManifest {
-            name: self.name.clone(),
-            version: "local".to_string(),
-            description: self.description.clone(),
-            author: Some("local".to_string()),
+            name: name.to_string(),
+            version: version.to_string(),
+            description: description.map(String::from),
+            author,
             dependencies: HashMap::new(),
-            templates: vec!["input.tera".to_string(), "button.tera".to_string()],
+            templates,
             integrity: None,
         })
     }
 
+    fn discover_local_templates(&self, dir: &std::path::Path) -> Result<Vec<String>, Box<dyn Error>> {
+        let mut templates = Vec::new();
+        
+        for entry in walkdir::WalkDir::new(dir).max_depth(3) {
+            let entry = entry?;
+            if entry.file_type().is_file() {
+                let path = entry.path();
+                if let Some(extension) = path.extension() {
+                    let ext_str = extension.to_string_lossy();
+                    if ext_str == "tera" || ext_str == "tsx" || ext_str == "rs" {
+                        if let Some(filename) = path.file_name() {
+                            templates.push(filename.to_string_lossy().into_owned());
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(templates)
+    }
+
     async fn fetch_http_manifest(&self, uri: &str) -> Result<ComponentManifest, Box<dyn Error>> {
-        // In a real implementation, this would make HTTP request
-        Ok(ComponentManifest {
-            name: self.name.clone(),
-            version: "remote".to_string(),
-            description: self.description.clone(),
-            author: self.author.clone(),
-            dependencies: HashMap::new(),
-            templates: vec!["component.tera".to_string()],
-            integrity: Some("sha256-remote123...".to_string()),
-        })
+        let client = reqwest::Client::new();
+        
+        // Try different manifest file names
+        let manifest_urls = vec![
+            format!("{}/rustform-component.yml", uri.trim_end_matches('/')),
+            format!("{}/component.yml", uri.trim_end_matches('/')),
+            format!("{}/manifest.yml", uri.trim_end_matches('/')),
+        ];
+
+        let mut last_error = None;
+        
+        for url in manifest_urls {
+            match client
+                .get(&url)
+                .header("User-Agent", "rustform-studio")
+                .send()
+                .await
+            {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        let manifest_yaml = response.text().await?;
+                        let manifest: ComponentManifest = serde_yaml::from_str(&manifest_yaml)?;
+                        
+                        tracing::info!("Fetched manifest from HTTP: {}", url);
+                        return Ok(manifest);
+                    }
+                }
+                Err(e) => {
+                    last_error = Some(e);
+                }
+            }
+        }
+
+        Err(Box::new(ComponentError {
+            message: format!(
+                "Failed to fetch manifest from HTTP URL: {}",
+                last_error.map(|e| e.to_string()).unwrap_or_else(|| "No manifest found".to_string())
+            ),
+            component: self.name.clone(),
+        }))
     }
 
     /// Caches component data locally for faster access
